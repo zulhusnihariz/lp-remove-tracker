@@ -1,0 +1,236 @@
+package generators
+
+import (
+	"context"
+	"crypto/x509"
+	"encoding/json"
+	"io"
+	"log"
+	"time"
+
+	"github.com/iqbalbaharum/go-solana-mev-bot/internal/utils"
+	"github.com/mr-tron/base58"
+	pb "github.com/rpcpool/yellowstone-grpc/examples/golang/proto"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/keepalive"
+	"google.golang.org/grpc/metadata"
+)
+
+var (
+	grpcAddr           string
+	token              string
+	jsonInput          string
+	insecureConnection bool
+	slots              bool
+	blocks             bool
+	block_meta         bool
+	signature          string
+	resub              uint
+
+	accountsFilter              utils.ArrayFlags
+	accountOwnersFilter         utils.ArrayFlags
+	transactionsAccountsInclude utils.ArrayFlags
+	transactionsAccountsExclude utils.ArrayFlags
+)
+
+var kacp = keepalive.ClientParameters{
+	Time:                10 * time.Second, // send pings every 10 seconds if there is no activity
+	Timeout:             time.Second,      // wait 1 second for ping ack before considering the connection dead
+	PermitWithoutStream: true,             // send pings even without active streams
+}
+
+type MempoolTxn struct {
+	Source               string                 `json:"source"`
+	Signature            string                 `json:"signature"`
+	AccountKeys          []string               `json:"accountKeys"`
+	RecentBlockhash      string                 `json:"recentBlockhash"`
+	Instructions         []TxInstruction        `json:"instructions"`
+	InnerInstructions    []*pb.InnerInstruction `json:"innerInstructions"`
+	AddressTableLookups  []TxAddressTableLookup `json:"addressTableLookups"`
+	PreTokenBalances     []TxTokenBalance       `json:"preTokenBalances"`
+	PostTokenBalances    []TxTokenBalance       `json:"postTokenBalances"`
+	ComputeUnitsConsumed uint64                 `json:"computeUnitsConsumed"`
+}
+
+type TxInstruction struct {
+	ProgramIdIndex uint32  `json:"programIdIndex"`
+	Accounts       []uint8 `json:"accounts"`
+	Data           []byte  `json:"data"`
+}
+
+type TxAddressTableLookup struct {
+	AccountKey      string  `json:"accountKey"`
+	WritableIndexes []uint8 `json:"writableIndexes"`
+	ReadonlyIndexes []uint8 `json:"readonlyIndexes"`
+}
+
+type TxTokenBalance struct {
+	Mint    string `json:"mint"`
+	Owner   string `json:"owner"`
+	Amount  string `json:"amount"`
+	Decimal uint32 `json:"decimal"`
+}
+
+type GeyserResponse struct {
+	MempoolTxns MempoolTxn `json:"mempoolTxns"`
+}
+
+func GrpcConnect(address string, plaintext bool) *grpc.ClientConn {
+	var opts []grpc.DialOption
+	if plaintext {
+		opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	} else {
+		pool, _ := x509.SystemCertPool()
+		creds := credentials.NewClientTLSFromCert(pool, "")
+		opts = append(opts, grpc.WithTransportCredentials(creds))
+	}
+
+	opts = append(opts, grpc.WithKeepaliveParams(kacp))
+
+	log.Println("Starting grpc client, connecting to", address)
+	conn, err := grpc.NewClient(address, opts...)
+	if err != nil {
+		log.Fatalf("fail to dial: %v", err)
+	}
+
+	return conn
+}
+
+func GrpcSubscribeByAddresses(conn *grpc.ClientConn, grpcToken string, accountInclude []string, accountExclude []string, txChannel chan<- GeyserResponse) {
+	defer close(txChannel)
+
+	var err error
+	client := pb.NewGeyserClient(conn)
+
+	var subscription pb.SubscribeRequest = pb.SubscribeRequest{
+		Slots:        make(map[string]*pb.SubscribeRequestFilterSlots),
+		Blocks:       make(map[string]*pb.SubscribeRequestFilterBlocks),
+		BlocksMeta:   make(map[string]*pb.SubscribeRequestFilterBlocksMeta),
+		Accounts:     make(map[string]*pb.SubscribeRequestFilterAccounts),
+		Transactions: make(map[string]*pb.SubscribeRequestFilterTransactions),
+		Entry:        make(map[string]*pb.SubscribeRequestFilterEntry),
+		Commitment:   pb.CommitmentLevel_PROCESSED.Enum(),
+	}
+
+	// subscription.Slots["slots"] = &pb.SubscribeRequestFilterSlots{}
+	subscription.Blocks = make(map[string]*pb.SubscribeRequestFilterBlocks)
+	subscription.BlocksMeta = make(map[string]*pb.SubscribeRequestFilterBlocksMeta)
+	subscription.Accounts = make(map[string]*pb.SubscribeRequestFilterAccounts)
+	subscription.Transactions = make(map[string]*pb.SubscribeRequestFilterTransactions)
+
+	// Subscribe to generic transaction stream
+	if len(accountInclude) > 0 {
+		subscription.Transactions[accountInclude[0]] = &pb.SubscribeRequestFilterTransactions{
+			Vote:           utils.BoolPointer(false),
+			Failed:         utils.BoolPointer(false),
+			AccountInclude: accountInclude,
+			AccountExclude: accountExclude,
+		}
+	}
+
+	subscriptionJson, err := json.Marshal(&subscription)
+	if err != nil {
+		log.Printf("Failed to marshal subscription request: %v", subscriptionJson)
+	}
+	log.Printf("Subscription request: %s", string(subscriptionJson))
+
+	// Set up the subscription request
+	ctx := context.Background()
+	if grpcToken != "" {
+		md := metadata.New(map[string]string{"x-token": grpcToken})
+		ctx = metadata.NewOutgoingContext(ctx, md)
+	}
+
+	stream, err := client.Subscribe(ctx)
+	if err != nil {
+		log.Fatalf("%v", err)
+	}
+
+	err = stream.Send(&subscription)
+	if err != nil {
+		log.Fatalf("%v", err)
+	}
+
+	for {
+		resp, err := stream.Recv()
+		// timestamp := time.Now().UnixNano()
+
+		if err == io.EOF {
+			return
+		}
+
+		if err != nil {
+			log.Fatalf("Error occurred in receiving update: %v", err)
+		}
+
+		if resp.GetTransaction() != nil {
+			// meta := resp.GetTransaction().Transaction.Meta
+			message := resp.GetTransaction().Transaction.Transaction.Message
+			meta := resp.GetTransaction().Transaction.Meta
+
+			response := &GeyserResponse{
+				MempoolTxns: MempoolTxn{
+					Source:               "grpc",
+					Signature:            base58.Encode(resp.GetTransaction().Transaction.Signature),
+					AccountKeys:          convertAccountKeys(message.AccountKeys),
+					RecentBlockhash:      base58.Encode(message.RecentBlockhash),
+					Instructions:         convertInstructions(message.Instructions),
+					AddressTableLookups:  convertAddressTableLookups(message.AddressTableLookups),
+					PreTokenBalances:     convertTokenBalances(meta.PreTokenBalances),
+					PostTokenBalances:    convertTokenBalances(meta.PostTokenBalances),
+					ComputeUnitsConsumed: *resp.GetTransaction().Transaction.GetMeta().ComputeUnitsConsumed,
+				},
+			}
+
+			txChannel <- *response
+		}
+		// log.Printf("%v %v", timestamp, bs58.Encode(resp.GetTransaction().Transaction.GetSignature()))
+	}
+}
+
+func convertAccountKeys(accountKeys [][]byte) []string {
+	encodedKeys := make([]string, len(accountKeys))
+	for i, key := range accountKeys {
+		encodedKeys[i] = base58.Encode(key)
+	}
+	return encodedKeys
+}
+
+func convertInstructions(instructions []*pb.CompiledInstruction) []TxInstruction {
+	convertedInstructions := make([]TxInstruction, len(instructions))
+	for i, instr := range instructions {
+		convertedInstructions[i] = TxInstruction{
+			ProgramIdIndex: instr.ProgramIdIndex,
+			Accounts:       instr.Accounts,
+			Data:           instr.Data,
+		}
+	}
+	return convertedInstructions
+}
+
+func convertAddressTableLookups(lookups []*pb.MessageAddressTableLookup) []TxAddressTableLookup {
+	convertedLookups := make([]TxAddressTableLookup, len(lookups))
+	for i, lookup := range lookups {
+		convertedLookups[i] = TxAddressTableLookup{
+			AccountKey:      base58.Encode(lookup.AccountKey),
+			WritableIndexes: lookup.WritableIndexes,
+			ReadonlyIndexes: lookup.ReadonlyIndexes,
+		}
+	}
+	return convertedLookups
+}
+
+func convertTokenBalances(tokenBalances []*pb.TokenBalance) []TxTokenBalance {
+	convertedBalances := make([]TxTokenBalance, len(tokenBalances))
+	for i, balance := range tokenBalances {
+		convertedBalances[i] = TxTokenBalance{
+			Mint:    balance.Mint,
+			Owner:   balance.Owner,
+			Amount:  balance.UiTokenAmount.Amount,
+			Decimal: balance.UiTokenAmount.Decimals,
+		}
+	}
+	return convertedBalances
+}
