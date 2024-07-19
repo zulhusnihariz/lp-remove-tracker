@@ -9,35 +9,46 @@ import (
 	"github.com/iqbalbaharum/go-solana-mev-bot/internal/coder"
 	"github.com/iqbalbaharum/go-solana-mev-bot/internal/config"
 	"github.com/iqbalbaharum/go-solana-mev-bot/internal/generators"
+	instructions "github.com/iqbalbaharum/go-solana-mev-bot/internal/instructions"
 	bot "github.com/iqbalbaharum/go-solana-mev-bot/internal/library"
 	"github.com/iqbalbaharum/go-solana-mev-bot/internal/liquidity"
+	"github.com/iqbalbaharum/go-solana-mev-bot/internal/rpc"
+	pb "github.com/rpcpool/yellowstone-grpc/examples/golang/proto"
 )
 
 func loadAdapter() {
 	adapter.GetRedisClient(0)
 }
 
+var (
+	client           *pb.GeyserClient
+	wsolTokenAccount solana.PublicKey
+)
+
 func main() {
 	config.InitEnv()
 	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
 
-	conn := generators.GrpcConnect(config.GrpcAddr, config.InsecureConnection)
-	defer conn.Close()
+	generators.GrpcConnect(config.GrpcAddr, config.InsecureConnection)
 
 	txChannel := make(chan generators.GeyserResponse)
 
 	go func() {
 		for response := range txChannel {
-			// Process the response here
 			processResponse(response)
 		}
 	}()
 
 	generators.GrpcSubscribeByAddresses(
-		conn,
 		config.GrpcToken,
 		[]string{config.RAYDIUM_AMM_V4.String()},
 		[]string{}, txChannel)
+
+	defer func() {
+		if err := generators.CloseConnection(); err != nil {
+			log.Printf("Error closing gRPC connection: %v", err)
+		}
+	}()
 }
 
 func processResponse(response generators.GeyserResponse) {
@@ -50,7 +61,7 @@ func processResponse(response generators.GeyserResponse) {
 		if programId == config.RAYDIUM_AMM_V4.String() {
 			decodedIx, err := c.Decode(ins.Data)
 			if err != nil {
-				log.Println("Failed to decode instruction:", err)
+				// log.Println("Failed to decode instruction:", err)
 				continue
 			}
 
@@ -102,7 +113,7 @@ func getPublicKeyFromTx(pos int, tx generators.MempoolTxn, instruction generator
 }
 
 func processWithdraw(ins generators.TxInstruction, tx generators.GeyserResponse) {
-	ammId, err := getPublicKeyFromTx(0, tx.MempoolTxns, ins)
+	ammId, err := getPublicKeyFromTx(1, tx.MempoolTxns, ins)
 	if err != nil {
 		return
 	}
@@ -110,6 +121,8 @@ func processWithdraw(ins generators.TxInstruction, tx generators.GeyserResponse)
 	if ammId == nil {
 		return
 	}
+
+	log.Print(ammId)
 
 	pKey, err := liquidity.GetPoolKeys(ammId)
 	if err != nil {
@@ -121,11 +134,41 @@ func processWithdraw(ins generators.TxInstruction, tx generators.GeyserResponse)
 		return
 	}
 
-	if reserve > uint64(config.LAMPORTS_PER_SOL) {
+	log.Printf("%s | %d", ammId, reserve)
+
+	// if reserve > uint64(config.LAMPORTS_PER_SOL) {
+	// 	return
+	// }
+
+	log.Printf("%s | Get latest blockhash", ammId)
+	blockhash, err := rpc.GetLatestBlockhash()
+	if err != nil {
+		log.Print(err)
 		return
 	}
 
-	// Buy
+	compute := instructions.ComputeUnit{
+		MicroLamports: 0,
+		Units:         0,
+	}
+
+	options := instructions.TxOption{
+		Blockhash: blockhash,
+	}
+
+	log.Printf("%s | Create instructions", ammId)
+	signatures, transaction, err := instructions.MakeSwapInstructions(
+		pKey,
+		wsolTokenAccount,
+		compute,
+		options,
+		1000000,
+		0,
+		"buy",
+	)
+
+	log.Printf("%s | Send Tx %s", ammId, signatures[0])
+	rpc.SendTransaction(transaction)
 }
 
 func processSwapBaseIn(ins generators.TxInstruction, tx generators.GeyserResponse) {

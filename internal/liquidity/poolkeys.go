@@ -9,7 +9,7 @@ import (
 )
 
 type RaydiumPoolKeys struct {
-	ID                 string
+	ID                 solana.PublicKey
 	BaseMint           solana.PublicKey
 	QuoteMint          solana.PublicKey
 	LpMint             solana.PublicKey
@@ -49,7 +49,7 @@ func GetPoolKeys(ammId *solana.PublicKey) (*RaydiumPoolKeys, error) {
 	}
 
 	pKey := &RaydiumPoolKeys{
-		ID:                 ammId.String(),
+		ID:                 *ammId,
 		BaseMint:           state.BaseMint,
 		QuoteMint:          state.QuoteMint,
 		LpMint:             state.LpMint,

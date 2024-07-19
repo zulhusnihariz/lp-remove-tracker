@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"log"
 	"net/http"
 
 	bin "github.com/gagliardetto/binary"
@@ -18,6 +19,14 @@ import (
 
 type AccountInfo struct {
 	Value *AccountInfoValue `json:"value"`
+}
+
+type BlockhashResult struct {
+	Value BlockhashValue `json:"value"`
+}
+
+type BlockhashValue struct {
+	Blockhash string `json:"blockhash"`
 }
 
 type AccountInfoValue struct {
@@ -105,6 +114,60 @@ func CallRPC(method string, params interface{}) (*ResponseBody, error) {
 	}
 
 	return &responseBody, nil
+}
+
+func SendTransaction(transaction *solana.Transaction) error {
+
+	log.Print(transaction.Message)
+	msg, err := transaction.MarshalBinary()
+	txBase64 := base64.StdEncoding.EncodeToString(msg)
+
+	params := []interface{}{
+		txBase64,
+		map[string]interface{}{
+			"encoding":            "base64",
+			"skipPreflight":       true,
+			"maxRetries":          1,
+			"preflightCommitment": "confirmed",
+		},
+	}
+
+	// Call RPC function
+	response, err := CallRPC("sendTransaction", params)
+	if err != nil {
+		return err
+	}
+
+	log.Print(response)
+
+	return nil
+}
+
+func GetLatestBlockhash() (solana.Hash, error) {
+	params := []interface{}{
+		map[string]interface{}{
+			"commitment": "confirmed",
+		},
+	}
+
+	response, err := CallRPC("getLatestBlockhash", params)
+	if err != nil {
+		return solana.Hash{}, err
+	}
+
+	var result BlockhashResult
+	if err := json.Unmarshal(response.Result, &result); err != nil {
+		return solana.Hash{}, err
+	}
+
+	blockhash := result.Value.Blockhash
+
+	hash, err := solana.HashFromBase58(blockhash)
+	if err != nil {
+		return solana.Hash{}, err
+	}
+
+	return hash, nil
 }
 
 func GetAccountInfo(publicKey solana.PublicKey, dataSlice *rpc.DataSlice) (*AccountInfo, error) {
