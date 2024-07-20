@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
-	"log"
 	"net/http"
 
 	bin "github.com/gagliardetto/binary"
@@ -118,7 +117,6 @@ func CallRPC(method string, params interface{}) (*ResponseBody, error) {
 
 func SendTransaction(transaction *solana.Transaction) error {
 
-	log.Print(transaction.Message)
 	msg, err := transaction.MarshalBinary()
 	txBase64 := base64.StdEncoding.EncodeToString(msg)
 
@@ -133,12 +131,10 @@ func SendTransaction(transaction *solana.Transaction) error {
 	}
 
 	// Call RPC function
-	response, err := CallRPC("sendTransaction", params)
+	CallRPC("sendTransaction", params)
 	if err != nil {
 		return err
 	}
-
-	log.Print(response)
 
 	return nil
 }

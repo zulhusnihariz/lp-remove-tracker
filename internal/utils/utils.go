@@ -14,3 +14,7 @@ func (i *ArrayFlags) Set(value string) error {
 func BoolPointer(b bool) *bool {
 	return &b
 }
+
+func Uint64Ptr(val uint64) *uint64 {
+	return &val
+}

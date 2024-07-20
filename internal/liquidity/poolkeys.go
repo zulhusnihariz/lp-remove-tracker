@@ -43,7 +43,7 @@ func GetPoolKeys(ammId *solana.PublicKey) (*RaydiumPoolKeys, error) {
 		return &RaydiumPoolKeys{}, err
 	}
 
-	authority, err := getAssociatedAuthority(config.RAYDIUM_AMM_V4.PublicKey())
+	authority, err := getAssociatedAuthority(config.RAYDIUM_AMM_V4)
 	if err != nil {
 		return &RaydiumPoolKeys{}, err
 	}

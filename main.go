@@ -22,11 +22,15 @@ func loadAdapter() {
 
 var (
 	client           *pb.GeyserClient
-	wsolTokenAccount solana.PublicKey
+	wsolTokenAccount solana.PublicKey = config.WSOL_TOKEN_ACCOUNT
 )
 
 func main() {
-	config.InitEnv()
+	err := config.InitEnv()
+	if err != nil {
+		return
+	}
+
 	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
 
 	generators.GrpcConnect(config.GrpcAddr, config.InsecureConnection)
@@ -167,7 +171,13 @@ func processWithdraw(ins generators.TxInstruction, tx generators.GeyserResponse)
 		"buy",
 	)
 
-	log.Printf("%s | Send Tx %s", ammId, signatures[0])
+	if err != nil {
+		log.Print(err)
+		return
+	}
+
+	log.Printf("%s | Send Tx %s", ammId, signatures)
+
 	rpc.SendTransaction(transaction)
 }
 

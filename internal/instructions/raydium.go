@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"log"
 
+	ag_binary "github.com/gagliardetto/binary"
 	bin "github.com/gagliardetto/binary"
 	"github.com/gagliardetto/solana-go"
 	"github.com/iqbalbaharum/go-solana-mev-bot/internal/config"
@@ -28,11 +30,15 @@ type LiquiditySwapFixedInInstructionParams struct {
 }
 
 func (instruction *RaydiumSwapInstruction) ProgramID() solana.PublicKey {
-	return config.RAYDIUM_AMM_V4.PublicKey()
+	return config.RAYDIUM_AMM_V4
 }
 
 func (instruction *RaydiumSwapInstruction) Accounts() (out []*solana.AccountMeta) {
-	return instruction.Impl.(solana.AccountsGettable).GetAccounts()
+	return instruction.GetAccounts()
+}
+
+func (instruction *RaydiumSwapInstruction) GetAccounts() []*solana.AccountMeta {
+	return instruction.AccountMetaSlice
 }
 
 func (instruction *RaydiumSwapInstruction) Data() ([]byte, error) {
@@ -60,29 +66,31 @@ func (instruction *RaydiumSwapInstruction) MarshalWithEncoder(encoder *bin.Encod
 	return nil
 }
 
-func MakeRaydiumSwapFixedInInstruction(params *LiquiditySwapFixedInInstructionParams) solana.Instruction {
+func MakeRaydiumSwapFixedInInstruction(params *LiquiditySwapFixedInInstructionParams) *RaydiumSwapInstruction {
 
-	instructions := RaydiumSwapInstruction{
+	// data := make([]byte, 25)
+	// data[0] = 9
+	// binary.LittleEndian.PutUint64(data[1:], params.InAmount)
+	// binary.LittleEndian.PutUint64(data[9:], params.MinimumOutAmount)
+
+	ins := &RaydiumSwapInstruction{
 		InAmount:         params.InAmount,
 		MinimumOutAmount: params.MinimumOutAmount,
-		AccountMetaSlice: make(solana.AccountMetaSlice, 18),
+		AccountMetaSlice: make(solana.AccountMetaSlice, 0),
 	}
 
-	instructions.BaseVariant = bin.BaseVariant{
-		Impl: instructions,
+	ins.BaseVariant = bin.BaseVariant{
+		Impl:   ins,
+		TypeID: ag_binary.TypeIDFromUint32(25, binary.LittleEndian),
 	}
 
 	// Define account metas
 	accountMetas := []*solana.AccountMeta{
-		solana.Meta(solana.TokenProgramID).WRITE(),      // Token program ID
-		solana.Meta(params.PoolKeys.ID).WRITE(),         // Pool ID
-		solana.Meta(params.PoolKeys.Authority),          // Pool authority
-		solana.Meta(params.PoolKeys.OpenOrders).WRITE(), // Open orders
-	}
-
-	// Add TargetOrders for version 4
-	if params.PoolKeys.Version == 4 {
-		accountMetas = append(accountMetas, solana.Meta(params.PoolKeys.TargetOrders).WRITE())
+		solana.Meta(solana.TokenProgramID).WRITE(),        // Token program ID
+		solana.Meta(params.PoolKeys.ID).WRITE(),           // Pool ID
+		solana.Meta(params.PoolKeys.Authority),            // Pool authority
+		solana.Meta(params.PoolKeys.OpenOrders).WRITE(),   // Open orders
+		solana.Meta(params.PoolKeys.TargetOrders).WRITE(), // Target orders
 	}
 
 	// Add BaseVault and QuoteVault
@@ -106,9 +114,11 @@ func MakeRaydiumSwapFixedInInstruction(params *LiquiditySwapFixedInInstructionPa
 		solana.Meta(params.Owner).SIGNER(),                    // User owner
 	)
 
-	instructions.AccountMetaSlice = accountMetas
+	log.Print(params.Owner)
+	ins.AccountMetaSlice = accountMetas
 
-	return &instructions
+	// return solana.NewInstruction(config.RAYDIUM_AMM_V4, accountMetas, data)
+	return ins
 }
 
 func GetAssociatedTokenAccount(mint solana.PublicKey) (solana.PublicKey, error) {

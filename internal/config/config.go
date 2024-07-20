@@ -1,6 +1,8 @@
 package config
 
 import (
+	"errors"
+	"fmt"
 	"log"
 	"os"
 
@@ -10,15 +12,17 @@ import (
 )
 
 var (
-	WRAPPED_SOL      = solana.MustPublicKeyFromBase58("So11111111111111111111111111111111111111112")
-	RAYDIUM_AMM_V4   = solana.MustPrivateKeyFromBase58("675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8")
-	LAMPORTS_PER_SOL = 1000000000
-	TA_RENT_LAMPORTS = 2039280
-	TA_SIZE          = 165
+	WRAPPED_SOL        = solana.MustPublicKeyFromBase58("So11111111111111111111111111111111111111112")
+	RAYDIUM_AMM_V4     = solana.MustPublicKeyFromBase58("675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8")
+	LAMPORTS_PER_SOL   = 1000000000
+	TA_RENT_LAMPORTS   = 2039280
+	TA_SIZE            = 165
+	WSOL_TOKEN_ACCOUNT = solana.MustPublicKeyFromBase58("J2u1nuNJQ7B1X252eyz7RKfRc9jrrkCKuLDkdHroLuz2")
 )
 
 var (
-	Payer              solana.PrivateKey
+	Payer              *solana.Wallet
+	AddressLookupTable solana.PublicKey
 	GrpcAddr           string
 	GrpcToken          string
 	InsecureConnection bool
@@ -29,12 +33,19 @@ var (
 	FlagPoolTracked    bool
 )
 
-func InitEnv() {
+func InitEnv() error {
 	if err := godotenv.Load(); err != nil {
 		log.Fatalf("Error loading .env file")
 	}
 
-	Payer = solana.PrivateKey(os.Getenv("PAYER_PRIVATE_KEY"))
+	pay, e := solana.WalletFromPrivateKeyBase58(os.Getenv("PAYER_PRIVATE_KEY"))
+	if e != nil {
+		return e
+	}
+
+	Payer = pay
+
+	AddressLookupTable = solana.MustPublicKeyFromBase58(os.Getenv("RAYDIUM_ALT"))
 	GrpcAddr = os.Getenv("GRPC_ENDPOINT")
 	GrpcToken = os.Getenv("GRPC_TOKEN")
 	InsecureConnection = os.Getenv("GRPC_INSECURE") == "true"
@@ -47,6 +58,8 @@ func InitEnv() {
 
 	err := adapter.InitRedisClients(RedisAddr, RedisPassword)
 	if err != nil {
-		log.Fatalf("Failed to initialize Redis clients: %v", err)
+		return errors.New(fmt.Sprintf("Failed to initialize Redis clients: %v", err))
 	}
+
+	return nil
 }
