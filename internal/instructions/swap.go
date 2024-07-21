@@ -1,13 +1,12 @@
 package instructions
 
 import (
-	"log"
-
 	"github.com/gagliardetto/solana-go"
 	associatedtokenaccount "github.com/gagliardetto/solana-go/programs/associated-token-account"
 	computebudget "github.com/gagliardetto/solana-go/programs/compute-budget"
 	"github.com/iqbalbaharum/go-solana-mev-bot/internal/config"
 	"github.com/iqbalbaharum/go-solana-mev-bot/internal/liquidity"
+	"github.com/iqbalbaharum/go-solana-mev-bot/internal/types"
 )
 
 type ComputeUnit struct {
@@ -20,7 +19,7 @@ type TxOption struct {
 }
 
 func MakeSwapInstructions(
-	poolKeys *liquidity.RaydiumPoolKeys,
+	poolKeys *types.RaydiumPoolKeys,
 	wsolTokenAccount solana.PublicKey,
 	compute ComputeUnit,
 	options TxOption,
@@ -117,8 +116,6 @@ func MakeSwapInstructions(
 		solana.TransactionAddressTables(alt),
 	)
 
-	log.Print(tx.String())
-
 	if err != nil {
 		return nil, nil, err
 	}
@@ -151,10 +148,6 @@ func createInstruction(mint solana.PublicKey) (solana.PublicKey, []solana.Instru
 		config.Payer.PublicKey(),
 		config.Payer.PublicKey(),
 		mint).Build()
-
-	if err != nil {
-		return solana.PublicKey{}, []solana.Instruction{}, err
-	}
 
 	ins = append(ins, createInstr)
 

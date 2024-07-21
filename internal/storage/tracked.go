@@ -18,7 +18,7 @@ func SetTracked(client *redis.Client, ammId string, tracked bool) error {
 		status = "YES"
 	}
 
-	if err := client.HSet(ctx, "storage:trackedamm", ammId, status).Err(); err != nil {
+	if err := client.HSet(ctx, ammId, KEY_TRACKEDAMM, status).Err(); err != nil {
 		return err
 	}
 
@@ -27,7 +27,7 @@ func SetTracked(client *redis.Client, ammId string, tracked bool) error {
 
 func GetTracked(client *redis.Client, ammId string) (bool, error) {
 	ctx := context.Background()
-	isTracked, err := client.HGet(ctx, "storage:trackedamm", ammId).Result()
+	isTracked, err := client.HGet(ctx, ammId, KEY_TRACKEDAMM).Result()
 	if err != nil {
 		if err == redis.Nil {
 			return false, nil
@@ -47,7 +47,7 @@ func GetTracked(client *redis.Client, ammId string) (bool, error) {
 
 func GetAllTracked(client *redis.Client) ([]string, error) {
 	ctx := context.Background()
-	keys, err := client.HKeys(ctx, "storage:trackedamm").Result()
+	keys, err := client.HKeys(ctx, KEY_TRACKEDAMM).Result()
 	if err != nil {
 		return nil, err
 	}

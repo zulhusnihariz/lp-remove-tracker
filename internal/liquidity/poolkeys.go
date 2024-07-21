@@ -2,53 +2,42 @@ package liquidity
 
 import (
 	"errors"
+	"log"
 
 	"github.com/gagliardetto/solana-go"
+	"github.com/iqbalbaharum/go-solana-mev-bot/internal/adapter"
 	"github.com/iqbalbaharum/go-solana-mev-bot/internal/config"
 	"github.com/iqbalbaharum/go-solana-mev-bot/internal/rpc"
+	"github.com/iqbalbaharum/go-solana-mev-bot/internal/storage"
+	"github.com/iqbalbaharum/go-solana-mev-bot/internal/types"
 )
 
-type RaydiumPoolKeys struct {
-	ID                 solana.PublicKey
-	BaseMint           solana.PublicKey
-	QuoteMint          solana.PublicKey
-	LpMint             solana.PublicKey
-	BaseDecimals       int
-	QuoteDecimals      int
-	LpDecimals         int
-	Version            int
-	ProgramID          solana.PublicKey
-	Authority          solana.PublicKey
-	OpenOrders         solana.PublicKey
-	TargetOrders       solana.PublicKey
-	BaseVault          solana.PublicKey
-	QuoteVault         solana.PublicKey
-	WithdrawQueue      solana.PublicKey
-	LpVault            solana.PublicKey
-	MarketProgramID    solana.PublicKey
-	MarketID           solana.PublicKey
-	MarketAuthority    solana.PublicKey
-	MarketBaseVault    solana.PublicKey
-	MarketQuoteVault   solana.PublicKey
-	MarketBids         solana.PublicKey
-	MarketAsks         solana.PublicKey
-	MarketEventQueue   solana.PublicKey
-	LookupTableAccount solana.PublicKey
-}
+// Return pool keys from storage if available, otherwise fetch from RPC and store in storage
+func GetPoolKeys(ammId *solana.PublicKey) (*types.RaydiumPoolKeys, error) {
+	redisClient, err := adapter.GetRedisClient(4)
 
-func GetPoolKeys(ammId *solana.PublicKey) (*RaydiumPoolKeys, error) {
+	storedPoolKey, err := storage.GetPoolKeys(redisClient, ammId)
+
+	if err != nil && err.Error() != "key not found" {
+		log.Print(err.Error(), err.Error() == "key not found")
+		return nil, err
+	}
+
+	if !storedPoolKey.ID.IsZero() {
+		return storedPoolKey, nil
+	}
 
 	state, err := rpc.GetLiquidityState(ammId)
 	if err != nil {
-		return &RaydiumPoolKeys{}, err
+		return &types.RaydiumPoolKeys{}, err
 	}
 
 	authority, err := getAssociatedAuthority(config.RAYDIUM_AMM_V4)
 	if err != nil {
-		return &RaydiumPoolKeys{}, err
+		return &types.RaydiumPoolKeys{}, err
 	}
 
-	pKey := &RaydiumPoolKeys{
+	pKey := &types.RaydiumPoolKeys{
 		ID:                 *ammId,
 		BaseMint:           state.BaseMint,
 		QuoteMint:          state.QuoteMint,
@@ -72,7 +61,7 @@ func GetPoolKeys(ammId *solana.PublicKey) (*RaydiumPoolKeys, error) {
 	marketInfo, err := rpc.GetMarketState(&state.MarketId)
 
 	if err != nil {
-		return &RaydiumPoolKeys{}, err
+		return &types.RaydiumPoolKeys{}, err
 	}
 
 	pKey.MarketBaseVault = marketInfo.BaseVault
@@ -81,10 +70,12 @@ func GetPoolKeys(ammId *solana.PublicKey) (*RaydiumPoolKeys, error) {
 	pKey.MarketAsks = marketInfo.Asks
 	pKey.MarketEventQueue = marketInfo.EventQueue
 
+	storage.SetPoolKeys(redisClient, pKey)
+
 	return pKey, nil
 }
 
-func GetMint(pKey *RaydiumPoolKeys) (solana.PublicKey, bool, error) {
+func GetMint(pKey *types.RaydiumPoolKeys) (solana.PublicKey, bool, error) {
 
 	var mint solana.PublicKey = solana.PublicKey{}
 	var swap = false
@@ -102,7 +93,7 @@ func GetMint(pKey *RaydiumPoolKeys) (solana.PublicKey, bool, error) {
 	return mint, swap, nil
 }
 
-func GetPoolSolBalance(pKey *RaydiumPoolKeys) (uint64, error) {
+func GetPoolSolBalance(pKey *types.RaydiumPoolKeys) (uint64, error) {
 
 	_, swap, err := GetMint(pKey)
 	if err != nil {

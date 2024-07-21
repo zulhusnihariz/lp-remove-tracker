@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"log"
+	"time"
 
 	"github.com/gagliardetto/solana-go"
 	"github.com/iqbalbaharum/go-solana-mev-bot/internal/adapter"
@@ -128,11 +129,16 @@ func processWithdraw(ins generators.TxInstruction, tx generators.GeyserResponse)
 		return
 	}
 
+	log.Printf("%s | Retrieving pool key", ammId)
+
 	pKey, err := liquidity.GetPoolKeys(ammId)
 	if err != nil {
+		log.Print(err)
 		return
 	}
 
+	log.Printf("%s | Sleep & Check pool balance", ammId)
+	time.Sleep(5 * time.Second)
 	reserve, err := liquidity.GetPoolSolBalance(pKey)
 	if err != nil {
 		return
@@ -144,7 +150,6 @@ func processWithdraw(ins generators.TxInstruction, tx generators.GeyserResponse)
 		return
 	}
 
-	log.Printf("%s | Get latest blockhash", ammId)
 	blockhash, err := solana.HashFromBase58(latestBlockhash)
 
 	if err != nil {
@@ -153,8 +158,8 @@ func processWithdraw(ins generators.TxInstruction, tx generators.GeyserResponse)
 	}
 
 	compute := instructions.ComputeUnit{
-		MicroLamports: 0,
-		Units:         0,
+		MicroLamports: 1000000,
+		Units:         85000,
 	}
 
 	options := instructions.TxOption{
@@ -183,6 +188,77 @@ func processWithdraw(ins generators.TxInstruction, tx generators.GeyserResponse)
 }
 
 func processSwapBaseIn(ins generators.TxInstruction, tx generators.GeyserResponse) {
+	var ammId *solana.PublicKey
+	var openbookId *solana.PublicKey
+	var sourceTokenAccount *solana.PublicKey
+	var destinationTokenAccount *solana.PublicKey
+	var signerPublicKey *solana.PublicKey
+
+	var err error
+	ammId, err = getPublicKeyFromTx(1, tx.MempoolTxns, ins)
+	if err != nil {
+		return
+	}
+
+	if ammId == nil {
+		return
+	}
+
+	openbookId, err = getPublicKeyFromTx(7, tx.MempoolTxns, ins)
+	if err != nil {
+		return
+	}
+
+	var sourceAccountIndex int
+	var destinationAccountIndex int
+	var signerAccountIndex int
+
+	if openbookId.String() == config.OPENBOOK_ID.String() {
+		sourceAccountIndex = 15
+		destinationAccountIndex = 16
+		signerAccountIndex = 17
+	} else {
+		sourceAccountIndex = 14
+		destinationAccountIndex = 15
+		signerAccountIndex = 16
+	}
+
+	sourceTokenAccount, err = getPublicKeyFromTx(sourceAccountIndex, tx.MempoolTxns, ins)
+	destinationTokenAccount, err = getPublicKeyFromTx(destinationAccountIndex, tx.MempoolTxns, ins)
+	signerPublicKey, err = getPublicKeyFromTx(signerAccountIndex, tx.MempoolTxns, ins)
+
+	if sourceTokenAccount == nil || destinationTokenAccount == nil || signerPublicKey == nil {
+		return
+	}
+
+	if signerPublicKey.Equals(config.Payer.PublicKey()) {
+		log.Print("Payer")
+	}
+
+	if !signerPublicKey.Equals(config.Payer.PublicKey()) {
+		isTracked, err := bot.GetAmmTrackingStatus(ammId)
+		if err != nil {
+			log.Print(err)
+			return
+		}
+
+		if !isTracked {
+			return
+		}
+	} else {
+		log.Printf("test: %s", tx.MempoolTxns.Signature)
+	}
+
+	pKey, err := liquidity.GetPoolKeys(ammId)
+	if err != nil {
+		return
+	}
+
+	// Only proceed for poolkey that have already registered,
+	// If no poolkey, then reject transaction
+	if pKey == nil {
+		return
+	}
 
 }
 

@@ -9,7 +9,7 @@ import (
 	bin "github.com/gagliardetto/binary"
 	"github.com/gagliardetto/solana-go"
 	"github.com/iqbalbaharum/go-solana-mev-bot/internal/config"
-	"github.com/iqbalbaharum/go-solana-mev-bot/internal/liquidity"
+	"github.com/iqbalbaharum/go-solana-mev-bot/internal/types"
 )
 
 type RaydiumSwapInstruction struct {
@@ -22,7 +22,7 @@ type RaydiumSwapInstruction struct {
 type LiquiditySwapFixedInInstructionParams struct {
 	InAmount         uint64
 	MinimumOutAmount uint64
-	PoolKeys         liquidity.RaydiumPoolKeys
+	PoolKeys         types.RaydiumPoolKeys
 	TokenAccountIn   solana.PublicKey
 	TokenAccountOut  solana.PublicKey
 	Owner            solana.PublicKey

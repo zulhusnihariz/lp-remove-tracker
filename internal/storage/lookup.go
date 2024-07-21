@@ -49,7 +49,7 @@ func GetLutInstance(db int) (*LookupTableStorage, error) {
 	return lookupTableStorageInstance, nil
 }
 
-func SetLookup(client *redis.Client, field string, lut lookup.AddressLookupTableState) error {
+func SetLookup(client *redis.Client, ammId string, lut lookup.AddressLookupTableState) error {
 	ctx := context.Background()
 
 	// Serialize the AddressLookupTableState to JSON
@@ -59,18 +59,18 @@ func SetLookup(client *redis.Client, field string, lut lookup.AddressLookupTable
 	}
 
 	// Store the serialized data in Redis
-	if err := client.HSet(ctx, "storage:lookuptable", field, data).Err(); err != nil {
+	if err := client.HSet(ctx, ammId, KEY_LOOKUP, data).Err(); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func GetLookup(client *redis.Client, field string) (lookup.AddressLookupTableState, error) {
+func GetLookup(client *redis.Client, ammId string) (lookup.AddressLookupTableState, error) {
 	ctx := context.Background()
 
 	// Retrieve the data from Redis
-	data, err := client.HGet(ctx, "storage:lookuptable", field).Result()
+	data, err := client.HGet(ctx, KEY_LOOKUP, ammId).Result()
 	if err != nil {
 		if err == redis.Nil {
 			return lookup.AddressLookupTableState{}, errors.New("key not found")
