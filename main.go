@@ -22,6 +22,7 @@ func loadAdapter() {
 
 var (
 	client           *pb.GeyserClient
+	latestBlockhash  string
 	wsolTokenAccount solana.PublicKey = config.WSOL_TOKEN_ACCOUNT
 )
 
@@ -57,6 +58,7 @@ func main() {
 
 func processResponse(response generators.GeyserResponse) {
 	// Your processing logic here
+	latestBlockhash = response.MempoolTxns.RecentBlockhash
 
 	c := coder.NewRaydiumAmmInstructionCoder()
 	for _, ins := range response.MempoolTxns.Instructions {
@@ -126,8 +128,6 @@ func processWithdraw(ins generators.TxInstruction, tx generators.GeyserResponse)
 		return
 	}
 
-	log.Print(ammId)
-
 	pKey, err := liquidity.GetPoolKeys(ammId)
 	if err != nil {
 		return
@@ -140,12 +140,13 @@ func processWithdraw(ins generators.TxInstruction, tx generators.GeyserResponse)
 
 	log.Printf("%s | %d", ammId, reserve)
 
-	// if reserve > uint64(config.LAMPORTS_PER_SOL) {
-	// 	return
-	// }
+	if reserve > uint64(config.LAMPORTS_PER_SOL) {
+		return
+	}
 
 	log.Printf("%s | Get latest blockhash", ammId)
-	blockhash, err := rpc.GetLatestBlockhash()
+	blockhash, err := solana.HashFromBase58(latestBlockhash)
+
 	if err != nil {
 		log.Print(err)
 		return
@@ -182,14 +183,7 @@ func processWithdraw(ins generators.TxInstruction, tx generators.GeyserResponse)
 }
 
 func processSwapBaseIn(ins generators.TxInstruction, tx generators.GeyserResponse) {
-	// mint, _, err := liquidity.GetMint(pKey)
-	// if err != nil {
-	// 	return
-	// }
 
-	// log.Print(data.BaseMint)
 }
-
-func processBuy() {}
 
 func processSell() {}

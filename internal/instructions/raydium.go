@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	"log"
 
 	ag_binary "github.com/gagliardetto/binary"
 	bin "github.com/gagliardetto/binary"
@@ -68,11 +67,6 @@ func (instruction *RaydiumSwapInstruction) MarshalWithEncoder(encoder *bin.Encod
 
 func MakeRaydiumSwapFixedInInstruction(params *LiquiditySwapFixedInInstructionParams) *RaydiumSwapInstruction {
 
-	// data := make([]byte, 25)
-	// data[0] = 9
-	// binary.LittleEndian.PutUint64(data[1:], params.InAmount)
-	// binary.LittleEndian.PutUint64(data[9:], params.MinimumOutAmount)
-
 	ins := &RaydiumSwapInstruction{
 		InAmount:         params.InAmount,
 		MinimumOutAmount: params.MinimumOutAmount,
@@ -84,7 +78,6 @@ func MakeRaydiumSwapFixedInInstruction(params *LiquiditySwapFixedInInstructionPa
 		TypeID: ag_binary.TypeIDFromUint32(25, binary.LittleEndian),
 	}
 
-	// Define account metas
 	accountMetas := []*solana.AccountMeta{
 		solana.Meta(solana.TokenProgramID).WRITE(),        // Token program ID
 		solana.Meta(params.PoolKeys.ID).WRITE(),           // Pool ID
@@ -114,10 +107,8 @@ func MakeRaydiumSwapFixedInInstruction(params *LiquiditySwapFixedInInstructionPa
 		solana.Meta(params.Owner).SIGNER(),                    // User owner
 	)
 
-	log.Print(params.Owner)
 	ins.AccountMetaSlice = accountMetas
 
-	// return solana.NewInstruction(config.RAYDIUM_AMM_V4, accountMetas, data)
 	return ins
 }
 

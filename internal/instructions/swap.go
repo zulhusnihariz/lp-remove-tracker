@@ -147,44 +147,16 @@ func createInstruction(mint solana.PublicKey) (solana.PublicKey, []solana.Instru
 		return solana.PublicKey{}, ins, err
 	}
 
-	// createInstr, err := system.NewCreateAccountInstruction(
-	// 	uint64(config.TA_RENT_LAMPORTS),
-	// 	uint64(config.TA_SIZE),
-	// 	solana.TokenProgramID,
-	// 	config.Payer.PublicKey(),
-	// 	ata).ValidateAndBuild()
-
 	createInstr := associatedtokenaccount.NewCreateInstruction(
 		config.Payer.PublicKey(),
 		config.Payer.PublicKey(),
 		mint).Build()
-	// createInstr := &system.CreateAccount{
-	// 	Lamports: utils.Uint64Ptr(uint64(config.TA_RENT_LAMPORTS)),
-	// 	Space:    utils.Uint64Ptr(uint64(config.TA_SIZE)),
-	// 	Owner:    &solana.TokenProgramID,
-	// 	AccountMetaSlice: []*solana.AccountMeta{
-	// 		solana.Meta(config.Payer.PublicKey()).WRITE().SIGNER(), // Token program ID
-	// 		solana.Meta(ata).WRITE(),
-	// 	},
-	// }
 
 	if err != nil {
 		return solana.PublicKey{}, []solana.Instruction{}, err
 	}
 
 	ins = append(ins, createInstr)
-
-	// initInstr, err := token.NewInitializeAccountInstruction(
-	// 	ata,
-	// 	mint,
-	// 	config.Payer.PublicKey(),
-	// 	solana.SysVarRentPubkey).ValidateAndBuild()
-
-	// if err != nil {
-	// 	return solana.PublicKey{}, []solana.Instruction{}, err
-	// }
-
-	// ins = append(ins, initInstr)
 
 	return ata, ins, nil
 }
