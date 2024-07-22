@@ -7,6 +7,7 @@ import (
 	"github.com/gagliardetto/solana-go/programs/system"
 	"github.com/iqbalbaharum/go-solana-mev-bot/internal/config"
 	"github.com/iqbalbaharum/go-solana-mev-bot/internal/liquidity"
+	"github.com/iqbalbaharum/go-solana-mev-bot/internal/rpc"
 	"github.com/iqbalbaharum/go-solana-mev-bot/internal/types"
 )
 
@@ -52,7 +53,7 @@ func MakeSwapInstructions(
 			accountOut = poolKeys.BaseMint
 		}
 
-		ata, ins, err := createInstruction(accountOut)
+		ata, ins, err := CreateInstruction(accountOut)
 
 		tokenAccountIn = wsolTokenAccount
 		tokenAccountOut = ata
@@ -128,10 +129,13 @@ func MakeSwapInstructions(
 	ins = append(ins, swapInstruction)
 	ins = append(ins, endInstructions...)
 
+	state, err := rpc.GetLookupTable(config.AddressLookupTable)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	alt := map[solana.PublicKey]solana.PublicKeySlice{
-		config.AddressLookupTable: {
-			config.AddressLookupTable,
-		},
+		config.AddressLookupTable: state.Addresses,
 	}
 
 	tx, err := solana.NewTransaction(
@@ -161,7 +165,67 @@ func MakeSwapInstructions(
 	return signature, tx, nil
 }
 
-func createInstruction(mint solana.PublicKey) (solana.PublicKey, []solana.Instruction, error) {
+func ValidatedAssociatedTokenAccount(mint *solana.PublicKey) (solana.PublicKey, *solana.Transaction, error) {
+
+	var err error
+	var tx *solana.Transaction
+	var blockhash solana.Hash
+
+	tokenAccount, err := GetAssociatedTokenAccount(*mint)
+	if err != nil {
+		return solana.PublicKey{}, nil, err
+	}
+
+	info, err := rpc.GetAccountInfo(tokenAccount, nil)
+	if err != nil {
+		return solana.PublicKey{}, nil, err
+	}
+
+	if info.Value == nil {
+
+		var ins []solana.Instruction
+
+		createInstr := associatedtokenaccount.NewCreateInstruction(
+			config.Payer.PublicKey(),
+			config.Payer.PublicKey(),
+			*mint).Build()
+
+		ins = append(ins, createInstr)
+
+		blockhash, err = rpc.GetLatestBlockhash()
+
+		if err != nil {
+			return solana.PublicKey{}, nil, err
+		}
+
+		tx, err = solana.NewTransaction(
+			ins,
+			blockhash,
+			solana.TransactionPayer(config.Payer.PublicKey()),
+		)
+
+		if err != nil {
+			return solana.PublicKey{}, nil, err
+		}
+
+		_, err := tx.Sign(
+			func(key solana.PublicKey) *solana.PrivateKey {
+				if config.Payer.PublicKey().Equals(key) {
+					return &config.Payer.PrivateKey
+				}
+				return nil
+			},
+		)
+
+		if err != nil {
+			return solana.PublicKey{}, nil, err
+		}
+	}
+
+	return tokenAccount, tx, nil
+}
+
+func CreateInstruction(mint solana.PublicKey) (solana.PublicKey, []solana.Instruction, error) {
 	ins := []solana.Instruction{}
 
 	ata, err := GetAssociatedTokenAccount(mint)

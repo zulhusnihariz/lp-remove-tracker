@@ -12,16 +12,15 @@ import (
 )
 
 var (
-	WRAPPED_SOL        = solana.MustPublicKeyFromBase58("So11111111111111111111111111111111111111112")
-	RAYDIUM_AMM_V4     = solana.MustPublicKeyFromBase58("675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8")
-	OPENBOOK_ID        = solana.MustPublicKeyFromBase58("srmqPvymJeFKQ4zGQed1GFppgkRHL9kaELCbyksJtPX")
-	RAYDIUM_AUTHORITY  = solana.MustPublicKeyFromBase58("5Q544fKrFoe6tsEbD7S8EmxGTJYAKtTVhAW5Q5pge4j1")
-	BLOXROUTE_MEMO     = solana.MustPublicKeyFromBase58("HQ2UUt18uJqKaQFJhgV9zaTdQxUZjNrsKFgoEDquBkcx")
-	BLOXROUTE_TIP      = solana.MustPublicKeyFromBase58("HWEoBxYs7ssKuudEjzjmpfJVX7Dvi7wescFsVx2L5yoY")
-	LAMPORTS_PER_SOL   = 1000000000
-	TA_RENT_LAMPORTS   = 2039280
-	TA_SIZE            = 165
-	WSOL_TOKEN_ACCOUNT = solana.MustPublicKeyFromBase58("J2u1nuNJQ7B1X252eyz7RKfRc9jrrkCKuLDkdHroLuz2")
+	WRAPPED_SOL       = solana.MustPublicKeyFromBase58("So11111111111111111111111111111111111111112")
+	RAYDIUM_AMM_V4    = solana.MustPublicKeyFromBase58("675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8")
+	OPENBOOK_ID       = solana.MustPublicKeyFromBase58("srmqPvymJeFKQ4zGQed1GFppgkRHL9kaELCbyksJtPX")
+	RAYDIUM_AUTHORITY = solana.MustPublicKeyFromBase58("5Q544fKrFoe6tsEbD7S8EmxGTJYAKtTVhAW5Q5pge4j1")
+	BLOXROUTE_MEMO    = solana.MustPublicKeyFromBase58("HQ2UUt18uJqKaQFJhgV9zaTdQxUZjNrsKFgoEDquBkcx")
+	BLOXROUTE_TIP     = solana.MustPublicKeyFromBase58("HWEoBxYs7ssKuudEjzjmpfJVX7Dvi7wescFsVx2L5yoY")
+	LAMPORTS_PER_SOL  = 1000000000
+	TA_RENT_LAMPORTS  = 2039280
+	TA_SIZE           = 165
 )
 
 var (

@@ -25,16 +25,25 @@ func loadAdapter() {
 var (
 	client           *pb.GeyserClient
 	latestBlockhash  string
-	wsolTokenAccount solana.PublicKey = config.WSOL_TOKEN_ACCOUNT
+	wsolTokenAccount solana.PublicKey
 )
 
 func main() {
+	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
+
 	err := config.InitEnv()
 	if err != nil {
 		return
 	}
 
-	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
+	ata, err := getOrCreateAssociatedTokenAccount()
+	if err != nil {
+		log.Print(err)
+		return
+	}
+
+	log.Printf("WSOL Associated Token Account %s", ata)
+	wsolTokenAccount = *ata
 
 	generators.GrpcConnect(config.GrpcAddr, config.InsecureConnection)
 
@@ -353,4 +362,17 @@ func processSwapBaseIn(ins generators.TxInstruction, tx generators.GeyserRespons
 	}
 }
 
-func processSell() {}
+func getOrCreateAssociatedTokenAccount() (*solana.PublicKey, error) {
+
+	ata, tx, err := instructions.ValidatedAssociatedTokenAccount(&config.WRAPPED_SOL)
+	if err != nil {
+		return nil, err
+	}
+
+	if tx != nil {
+		log.Print("Creating WSOL associated token account")
+		rpc.SendTransaction(tx)
+	}
+
+	return &ata, nil
+}
