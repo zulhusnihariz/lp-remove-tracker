@@ -121,3 +121,9 @@ func GetAssociatedTokenAccount(mint solana.PublicKey) (solana.PublicKey, error) 
 
 	return tokenAccount, nil
 }
+
+func CreateMemoInstruction(from solana.PublicKey, programId solana.PublicKey, memo string) solana.Instruction {
+	accountMetas := []*solana.AccountMeta{}
+	memoInstruction := solana.NewInstruction(programId, accountMetas, []byte(memo))
+	return memoInstruction
+}

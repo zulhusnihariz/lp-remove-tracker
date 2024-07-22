@@ -3,7 +3,7 @@ package main
 import (
 	"errors"
 	"log"
-	"time"
+	"math/big"
 
 	"github.com/gagliardetto/solana-go"
 	"github.com/iqbalbaharum/go-solana-mev-bot/internal/adapter"
@@ -14,6 +14,7 @@ import (
 	bot "github.com/iqbalbaharum/go-solana-mev-bot/internal/library"
 	"github.com/iqbalbaharum/go-solana-mev-bot/internal/liquidity"
 	"github.com/iqbalbaharum/go-solana-mev-bot/internal/rpc"
+	"github.com/iqbalbaharum/go-solana-mev-bot/internal/types"
 	pb "github.com/rpcpool/yellowstone-grpc/examples/golang/proto"
 )
 
@@ -138,15 +139,14 @@ func processWithdraw(ins generators.TxInstruction, tx generators.GeyserResponse)
 	}
 
 	log.Printf("%s | Sleep & Check pool balance", ammId)
-	time.Sleep(5 * time.Second)
+	// time.Sleep(1 * time.Second)
 	reserve, err := liquidity.GetPoolSolBalance(pKey)
 	if err != nil {
 		return
 	}
 
-	log.Printf("%s | %d", ammId, reserve)
-
 	if reserve > uint64(config.LAMPORTS_PER_SOL) {
+		log.Printf("%s | Pool has high balance", ammId)
 		return
 	}
 
@@ -160,13 +160,13 @@ func processWithdraw(ins generators.TxInstruction, tx generators.GeyserResponse)
 	compute := instructions.ComputeUnit{
 		MicroLamports: 1000000,
 		Units:         85000,
+		Tip:           0,
 	}
 
 	options := instructions.TxOption{
 		Blockhash: blockhash,
 	}
 
-	log.Printf("%s | Create instructions", ammId)
 	signatures, transaction, err := instructions.MakeSwapInstructions(
 		pKey,
 		wsolTokenAccount,
@@ -175,6 +175,7 @@ func processWithdraw(ins generators.TxInstruction, tx generators.GeyserResponse)
 		1000000,
 		0,
 		"buy",
+		"bloxroute",
 	)
 
 	if err != nil {
@@ -182,7 +183,7 @@ func processWithdraw(ins generators.TxInstruction, tx generators.GeyserResponse)
 		return
 	}
 
-	log.Printf("%s | Send Tx %s", ammId, signatures)
+	log.Printf("%s | BUY | %s", ammId, signatures)
 
 	rpc.SendTransaction(transaction)
 }
@@ -231,10 +232,6 @@ func processSwapBaseIn(ins generators.TxInstruction, tx generators.GeyserRespons
 		return
 	}
 
-	if signerPublicKey.Equals(config.Payer.PublicKey()) {
-		log.Print("Payer")
-	}
-
 	if !signerPublicKey.Equals(config.Payer.PublicKey()) {
 		isTracked, err := bot.GetAmmTrackingStatus(ammId)
 		if err != nil {
@@ -245,8 +242,7 @@ func processSwapBaseIn(ins generators.TxInstruction, tx generators.GeyserRespons
 		if !isTracked {
 			return
 		}
-	} else {
-		log.Printf("test: %s", tx.MempoolTxns.Signature)
+
 	}
 
 	pKey, err := liquidity.GetPoolKeys(ammId)
@@ -254,12 +250,106 @@ func processSwapBaseIn(ins generators.TxInstruction, tx generators.GeyserRespons
 		return
 	}
 
-	// Only proceed for poolkey that have already registered,
-	// If no poolkey, then reject transaction
-	if pKey == nil {
+	mint, _, err := liquidity.GetMint(pKey)
+	if err != nil {
 		return
 	}
 
+	amount := bot.GetBalanceFromTransaction(tx.MempoolTxns.PreTokenBalances, tx.MempoolTxns.PostTokenBalances, mint)
+	amountSol := bot.GetBalanceFromTransaction(tx.MempoolTxns.PreTokenBalances, tx.MempoolTxns.PostTokenBalances, config.WRAPPED_SOL)
+
+	if signerPublicKey.Equals(config.Payer.PublicKey()) {
+		chunk, err := bot.GetTokenChunk(ammId)
+		if err != nil {
+			if err.Error() == "key not found" {
+				bot.SetTokenChunk(ammId, types.TokenChunk{
+					Total:     amount,
+					Remaining: amount,
+					Chunk:     new(big.Int).Div(amount, big.NewInt(10)),
+				})
+
+				bot.RegisterAmm(ammId)
+			}
+			return
+		}
+
+		if chunk.Remaining.Uint64() == 0 {
+			bot.UnregisterAmm(ammId)
+			log.Printf("%s | No more chunk remaining ", ammId)
+			return
+		} else {
+			chunk.Remaining = new(big.Int).Sub(chunk.Remaining, amount)
+			bot.SetTokenChunk(ammId, chunk)
+		}
+
+		return
+	}
+
+	// Only proceed if the amount is greater than 0.011 SOL and amount of SOL is a negative number (represent buy action) 1100000
+	if amount.Sign() == -1 && amountSol.Cmp(big.NewInt(100000)) == 1 {
+		log.Printf("%s | Potential entry %d SOL | %s", ammId, amountSol, tx.MempoolTxns.Signature)
+
+		blockhash, err := solana.HashFromBase58(latestBlockhash)
+
+		if err != nil {
+			log.Print(err)
+			return
+		}
+
+		var tip uint64
+		var minAmountOut uint64
+		var useStakedRPCFlag bool = false
+		if amountSol.Uint64() > 200000000 {
+			tip = 200000000
+			minAmountOut = 200000000
+			useStakedRPCFlag = true
+		} else {
+			tip = 0
+			minAmountOut = 1000000
+			useStakedRPCFlag = false
+		}
+
+		compute := instructions.ComputeUnit{
+			MicroLamports: 10000000,
+			Units:         60000,
+			Tip:           tip,
+		}
+
+		options := instructions.TxOption{
+			Blockhash: blockhash,
+		}
+
+		chunk, err := bot.GetTokenChunk(ammId)
+		if err != nil {
+			log.Printf("%s | %s", ammId, err)
+			return
+		}
+
+		if (chunk.Remaining).Uint64() == 0 {
+			log.Printf("%s | No more chunk remaining", ammId)
+			return
+		}
+
+		signatures, transaction, err := instructions.MakeSwapInstructions(
+			pKey,
+			wsolTokenAccount,
+			compute,
+			options,
+			chunk.Chunk.Uint64(),
+			minAmountOut,
+			"sell",
+			"bloxroute",
+		)
+
+		if err != nil {
+			log.Printf("%s | %s", ammId, err)
+			return
+		}
+
+		rpc.SubmitBloxRouteTransaction(transaction, useStakedRPCFlag)
+
+		log.Printf("%s | SELL | %s", ammId, signatures)
+	}
 }
 
 func processSell() {}

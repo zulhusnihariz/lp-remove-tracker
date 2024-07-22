@@ -15,6 +15,9 @@ var (
 	WRAPPED_SOL        = solana.MustPublicKeyFromBase58("So11111111111111111111111111111111111111112")
 	RAYDIUM_AMM_V4     = solana.MustPublicKeyFromBase58("675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8")
 	OPENBOOK_ID        = solana.MustPublicKeyFromBase58("srmqPvymJeFKQ4zGQed1GFppgkRHL9kaELCbyksJtPX")
+	RAYDIUM_AUTHORITY  = solana.MustPublicKeyFromBase58("5Q544fKrFoe6tsEbD7S8EmxGTJYAKtTVhAW5Q5pge4j1")
+	BLOXROUTE_MEMO     = solana.MustPublicKeyFromBase58("HQ2UUt18uJqKaQFJhgV9zaTdQxUZjNrsKFgoEDquBkcx")
+	BLOXROUTE_TIP      = solana.MustPublicKeyFromBase58("HWEoBxYs7ssKuudEjzjmpfJVX7Dvi7wescFsVx2L5yoY")
 	LAMPORTS_PER_SOL   = 1000000000
 	TA_RENT_LAMPORTS   = 2039280
 	TA_SIZE            = 165
@@ -32,6 +35,8 @@ var (
 	RpcHttpUrl         string
 	RpcWsUrl           string
 	FlagPoolTracked    bool
+	BloxRouteUrl       string
+	BloxRouteToken     string
 )
 
 func InitEnv() error {
@@ -54,6 +59,8 @@ func InitEnv() error {
 	RedisPassword = os.Getenv("REDIS_PASSWORD")
 	RpcHttpUrl = os.Getenv("RPC_HTTP_URL")
 	RpcWsUrl = os.Getenv("RPC_WS_URL")
+	BloxRouteUrl = os.Getenv("BLOXROUTE_URL")
+	BloxRouteToken = os.Getenv("BLOXROUTE_TOKEN")
 
 	FlagPoolTracked = os.Getenv("FLAG_POOL_TRACKED") == "true"
 

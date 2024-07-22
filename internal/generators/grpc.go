@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/gagliardetto/solana-go"
+	"github.com/iqbalbaharum/go-solana-mev-bot/internal/types"
 	"github.com/iqbalbaharum/go-solana-mev-bot/internal/utils"
 	"github.com/mr-tron/base58"
 	pb "github.com/rpcpool/yellowstone-grpc/examples/golang/proto"
@@ -51,8 +52,8 @@ type MempoolTxn struct {
 	Instructions         []TxInstruction        `json:"instructions"`
 	InnerInstructions    []*pb.InnerInstruction `json:"innerInstructions"`
 	AddressTableLookups  []TxAddressTableLookup `json:"addressTableLookups"`
-	PreTokenBalances     []TxTokenBalance       `json:"preTokenBalances"`
-	PostTokenBalances    []TxTokenBalance       `json:"postTokenBalances"`
+	PreTokenBalances     []types.TxTokenBalance `json:"preTokenBalances"`
+	PostTokenBalances    []types.TxTokenBalance `json:"postTokenBalances"`
 	ComputeUnitsConsumed uint64                 `json:"computeUnitsConsumed"`
 }
 
@@ -66,13 +67,6 @@ type TxAddressTableLookup struct {
 	AccountKey      string  `json:"accountKey"`
 	WritableIndexes []uint8 `json:"writableIndexes"`
 	ReadonlyIndexes []uint8 `json:"readonlyIndexes"`
-}
-
-type TxTokenBalance struct {
-	Mint    string `json:"mint"`
-	Owner   string `json:"owner"`
-	Amount  string `json:"amount"`
-	Decimal uint32 `json:"decimal"`
 }
 
 type GeyserResponse struct {
@@ -238,10 +232,10 @@ func convertAddressTableLookups(lookups []*pb.MessageAddressTableLookup) []TxAdd
 	return convertedLookups
 }
 
-func convertTokenBalances(tokenBalances []*pb.TokenBalance) []TxTokenBalance {
-	convertedBalances := make([]TxTokenBalance, len(tokenBalances))
+func convertTokenBalances(tokenBalances []*pb.TokenBalance) []types.TxTokenBalance {
+	convertedBalances := make([]types.TxTokenBalance, len(tokenBalances))
 	for i, balance := range tokenBalances {
-		convertedBalances[i] = TxTokenBalance{
+		convertedBalances[i] = types.TxTokenBalance{
 			Mint:    balance.Mint,
 			Owner:   balance.Owner,
 			Amount:  balance.UiTokenAmount.Amount,

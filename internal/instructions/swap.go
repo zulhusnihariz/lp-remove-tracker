@@ -4,6 +4,7 @@ import (
 	"github.com/gagliardetto/solana-go"
 	associatedtokenaccount "github.com/gagliardetto/solana-go/programs/associated-token-account"
 	computebudget "github.com/gagliardetto/solana-go/programs/compute-budget"
+	"github.com/gagliardetto/solana-go/programs/system"
 	"github.com/iqbalbaharum/go-solana-mev-bot/internal/config"
 	"github.com/iqbalbaharum/go-solana-mev-bot/internal/liquidity"
 	"github.com/iqbalbaharum/go-solana-mev-bot/internal/types"
@@ -12,6 +13,7 @@ import (
 type ComputeUnit struct {
 	MicroLamports uint64
 	Units         uint32
+	Tip           uint64
 }
 
 type TxOption struct {
@@ -25,7 +27,8 @@ func MakeSwapInstructions(
 	options TxOption,
 	amountIn uint64,
 	minAmountOut uint64,
-	action string) ([]solana.Signature, *solana.Transaction, error) {
+	action string,
+	method string) ([]solana.Signature, *solana.Transaction, error) {
 
 	var tokenAccountIn solana.PublicKey
 	var tokenAccountOut solana.PublicKey
@@ -95,6 +98,28 @@ func MakeSwapInstructions(
 		computeInstructions = append(
 			computeInstructions,
 			computebudget.NewSetComputeUnitPriceInstruction(compute.MicroLamports).Build())
+	}
+
+	if method == "bloxroute" {
+
+		if compute.Tip > 0 {
+			endInstructions = append(
+				endInstructions,
+				system.NewTransferInstruction(
+					compute.Tip,
+					config.Payer.PublicKey(),
+					config.BLOXROUTE_TIP,
+				).Build(),
+			)
+		}
+
+		endInstructions = append(
+			endInstructions,
+			CreateMemoInstruction(
+				config.Payer.PublicKey(),
+				config.BLOXROUTE_MEMO,
+				"Powered by bloXroute Trader Api"),
+		)
 	}
 
 	ins := []solana.Instruction{}
