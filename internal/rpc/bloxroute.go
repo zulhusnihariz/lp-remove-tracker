@@ -40,12 +40,12 @@ func SubmitBloxRouteTransaction(transaction *solana.Transaction, useStakedRPCs b
 		"useStakedRPCs":          useStakedRPCs,
 	}
 
-	body, err := json.Marshal(requestBody)
-	if err != nil {
+	var requestBodyBuffer bytes.Buffer
+	if err := json.NewEncoder(&requestBodyBuffer).Encode(requestBody); err != nil {
 		return "", err
 	}
 
-	req, err := http.NewRequest("POST", config.BloxRouteUrl, bytes.NewReader(body))
+	req, err := http.NewRequest("POST", config.BloxRouteUrl, &requestBodyBuffer)
 	if err != nil {
 		return "", err
 	}
@@ -77,8 +77,18 @@ func SubmitBloxRouteTransaction(transaction *solana.Transaction, useStakedRPCs b
 	defer reader.Close()
 
 	var responseBody strings.Builder
-	if _, err := io.Copy(&responseBody, reader); err != nil {
-		return "", err
+	buf := make([]byte, 4096) // 4KB buffer for reading
+	for {
+		n, err := reader.Read(buf)
+		if n > 0 {
+			responseBody.Write(buf[:n])
+		}
+		if err != nil {
+			if err != io.EOF {
+				return "", err
+			}
+			break
+		}
 	}
 
 	var response BloxRouteResponse

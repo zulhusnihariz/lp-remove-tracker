@@ -127,26 +127,24 @@ func processWithdraw(ins generators.TxInstruction, tx generators.GeyserResponse)
 	}
 
 	if ammId == nil {
+		log.Print("Unable to retrieve AMM ID")
 		return
 	}
-
-	log.Printf("%s | Retrieving pool key", ammId)
 
 	pKey, err := liquidity.GetPoolKeys(ammId)
 	if err != nil {
-		log.Print(err)
+		log.Printf("%s | %s", ammId, err)
 		return
 	}
 
-	log.Printf("%s | Sleep & Check pool balance", ammId)
-	// time.Sleep(1 * time.Second)
 	reserve, err := liquidity.GetPoolSolBalance(pKey)
 	if err != nil {
+		log.Printf("%s | %s", ammId, err)
 		return
 	}
 
 	if reserve > uint64(config.LAMPORTS_PER_SOL) {
-		log.Printf("%s | Pool has high balance", ammId)
+		log.Printf("%s | Pool still have high balance", ammId)
 		return
 	}
 
@@ -188,6 +186,9 @@ func processWithdraw(ins generators.TxInstruction, tx generators.GeyserResponse)
 	rpc.SendTransaction(transaction)
 }
 
+/**
+* Process swap base in instruction
+ */
 func processSwapBaseIn(ins generators.TxInstruction, tx generators.GeyserResponse) {
 	var ammId *solana.PublicKey
 	var openbookId *solana.PublicKey
@@ -285,8 +286,8 @@ func processSwapBaseIn(ins generators.TxInstruction, tx generators.GeyserRespons
 		return
 	}
 
-	// Only proceed if the amount is greater than 0.011 SOL and amount of SOL is a negative number (represent buy action) 1100000
-	if amount.Sign() == -1 && amountSol.Cmp(big.NewInt(100000)) == 1 {
+	// Only proceed if the amount is greater than 0.011 SOL and amount of SOL is a negative number (represent buy action)
+	if amount.Sign() == -1 && amountSol.Cmp(big.NewInt(1100000)) == 1 {
 		log.Printf("%s | Potential entry %d SOL | %s", ammId, amountSol, tx.MempoolTxns.Signature)
 
 		blockhash, err := solana.HashFromBase58(latestBlockhash)
