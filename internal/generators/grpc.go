@@ -39,8 +39,8 @@ var (
 )
 
 var kacp = keepalive.ClientParameters{
-	Time:                10 * time.Second, // send pings every 10 seconds if there is no activity
-	Timeout:             time.Second,      // wait 1 second for ping ack before considering the connection dead
+	Time:                10 * time.Minute, // send pings every 10 seconds if there is no activity
+	Timeout:             20 * time.Second, // wait 1 second for ping ack before considering the connection dead
 	PermitWithoutStream: true,             // send pings even without active streams
 }
 
@@ -89,6 +89,9 @@ func GrpcConnect(address string, plaintext bool) {
 	}
 
 	opts = append(opts, grpc.WithKeepaliveParams(kacp))
+	opts = append(opts, grpc.WithInitialWindowSize(1<<20))     // 1 MB
+	opts = append(opts, grpc.WithInitialConnWindowSize(1<<20)) // 1 MB
+	opts = append(opts, grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(1<<30)))
 
 	log.Println("Starting grpc client, connecting to", address)
 	var err error

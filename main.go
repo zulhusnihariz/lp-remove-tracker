@@ -182,7 +182,7 @@ func processWithdraw(ins generators.TxInstruction, tx generators.GeyserResponse)
 		1000000,
 		0,
 		"buy",
-		"bloxroute",
+		"rpc",
 	)
 
 	if err != nil {
@@ -296,7 +296,8 @@ func processSwapBaseIn(ins generators.TxInstruction, tx generators.GeyserRespons
 	}
 
 	// Only proceed if the amount is greater than 0.011 SOL and amount of SOL is a negative number (represent buy action)
-	if amount.Sign() == -1 && amountSol.Cmp(big.NewInt(1100000)) == 1 {
+	log.Printf("%s | %d | %s | %s", ammId, amount.Sign(), amountSol, tx.MempoolTxns.Signature)
+	if amount.Sign() == -1 && amountSol.Cmp(big.NewInt(1000000)) == 1 {
 		log.Printf("%s | Potential entry %d SOL | %s", ammId, amountSol, tx.MempoolTxns.Signature)
 
 		blockhash, err := solana.HashFromBase58(latestBlockhash)
