@@ -33,7 +33,6 @@ var (
 	RedisPassword      string
 	RpcHttpUrl         string
 	RpcWsUrl           string
-	FlagPoolTracked    bool
 	BloxRouteUrl       string
 	BloxRouteToken     string
 )
@@ -60,8 +59,6 @@ func InitEnv() error {
 	RpcWsUrl = os.Getenv("RPC_WS_URL")
 	BloxRouteUrl = os.Getenv("BLOXROUTE_URL")
 	BloxRouteToken = os.Getenv("BLOXROUTE_TOKEN")
-
-	FlagPoolTracked = os.Getenv("FLAG_POOL_TRACKED") == "true"
 
 	err := adapter.InitRedisClients(RedisAddr, RedisPassword)
 	if err != nil {

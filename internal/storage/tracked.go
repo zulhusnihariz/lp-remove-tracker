@@ -11,11 +11,17 @@ type TrackedAmmStorage struct {
 	client *redis.Client
 }
 
-func SetTracked(client *redis.Client, ammId string, tracked bool) error {
+const (
+	TRACKED     = "TRACKED"
+	PAUSE       = "PAUSE"
+	NOT_TRACKED = "NOT_TRACKED"
+)
+
+func SetTracked(client *redis.Client, ammId string, status string) error {
 	ctx := context.Background()
-	status := "NO"
-	if tracked {
-		status = "YES"
+
+	if status != TRACKED && status != PAUSE && status != NOT_TRACKED {
+		return errors.New("invalid tracking status")
 	}
 
 	if err := client.HSet(ctx, ammId, KEY_TRACKEDAMM, status).Err(); err != nil {
@@ -25,23 +31,21 @@ func SetTracked(client *redis.Client, ammId string, tracked bool) error {
 	return nil
 }
 
-func GetTracked(client *redis.Client, ammId string) (bool, error) {
+func GetTracked(client *redis.Client, ammId string) (string, error) {
 	ctx := context.Background()
-	isTracked, err := client.HGet(ctx, ammId, KEY_TRACKEDAMM).Result()
+	status, err := client.HGet(ctx, ammId, KEY_TRACKEDAMM).Result()
 	if err != nil {
 		if err == redis.Nil {
-			return false, nil
+			return NOT_TRACKED, nil
 		}
-		return false, err
+		return "", err
 	}
 
-	switch isTracked {
-	case "YES":
-		return true, nil
-	case "NO":
-		return false, nil
+	switch status {
+	case TRACKED, PAUSE, NOT_TRACKED:
+		return status, nil
 	default:
-		return false, errors.New("unexpected value in Redis")
+		return "", errors.New("unexpected value in Redis")
 	}
 }
 

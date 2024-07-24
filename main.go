@@ -15,6 +15,7 @@ import (
 	bot "github.com/iqbalbaharum/go-solana-mev-bot/internal/library"
 	"github.com/iqbalbaharum/go-solana-mev-bot/internal/liquidity"
 	"github.com/iqbalbaharum/go-solana-mev-bot/internal/rpc"
+	"github.com/iqbalbaharum/go-solana-mev-bot/internal/storage"
 	"github.com/iqbalbaharum/go-solana-mev-bot/internal/types"
 	pb "github.com/rpcpool/yellowstone-grpc/examples/golang/proto"
 )
@@ -87,6 +88,8 @@ func processResponse(response generators.GeyserResponse) {
 
 			switch decodedIx.(type) {
 			case coder.Initialize2:
+				log.Println("Initialize2", response.MempoolTxns.Signature)
+				processInitialize2(ins, response)
 			case coder.Withdraw:
 				log.Println("Withdraw", response.MempoolTxns.Signature)
 				processWithdraw(ins, response)
@@ -132,6 +135,29 @@ func getPublicKeyFromTx(pos int, tx generators.MempoolTxn, instruction generator
 	return ammId, nil
 }
 
+func processInitialize2(ins generators.TxInstruction, tx generators.GeyserResponse) {
+	ammId, err := getPublicKeyFromTx(4, tx.MempoolTxns, ins)
+	if err != nil {
+		return
+	}
+
+	if ammId == nil {
+		log.Print("Unable to retrieve AMM ID")
+		return
+	}
+
+	status, err := bot.GetAmmTrackingStatus(ammId)
+	if err != nil {
+		log.Print(err)
+		return
+	}
+
+	if status == storage.TRACKED {
+		log.Printf("%s | Untracked because of initialize2", ammId)
+		bot.PauseAmmTracking(ammId)
+	}
+}
+
 func processWithdraw(ins generators.TxInstruction, tx generators.GeyserResponse) {
 	ammId, err := getPublicKeyFromTx(1, tx.MempoolTxns, ins)
 	if err != nil {
@@ -166,6 +192,23 @@ func processWithdraw(ins generators.TxInstruction, tx generators.GeyserResponse)
 		MicroLamports: 1000000,
 		Units:         85000,
 		Tip:           0,
+	}
+
+	isTracked, err := bot.GetAmmTrackingStatus(ammId)
+	if err != nil {
+		log.Print(err)
+		return
+	}
+
+	if isTracked == storage.PAUSE {
+		log.Printf("%s | UNPAUSED tracking", ammId)
+		bot.TrackedAmm(ammId)
+		return
+	}
+
+	if isTracked == storage.NOT_TRACKED {
+		log.Printf("%s | Not tracked", ammId)
+		return
 	}
 
 	blockhash, err := solana.HashFromBase58(latestBlockhash)
@@ -261,13 +304,13 @@ func processSwapBaseIn(ins generators.TxInstruction, tx generators.GeyserRespons
 	}
 
 	if !signerPublicKey.Equals(config.Payer.PublicKey()) {
-		isTracked, err := bot.GetAmmTrackingStatus(ammId)
+		status, err := bot.GetAmmTrackingStatus(ammId)
 		if err != nil {
 			log.Print(err)
 			return
 		}
 
-		if !isTracked {
+		if status != storage.TRACKED {
 			return
 		}
 
@@ -296,14 +339,14 @@ func processSwapBaseIn(ins generators.TxInstruction, tx generators.GeyserRespons
 					Chunk:     new(big.Int).Div(amount, big.NewInt(10)),
 				})
 
-				bot.RegisterAmm(ammId)
+				bot.TrackedAmm(ammId)
 				log.Printf("%s | Tracked", ammId)
 			}
 			return
 		}
 
 		if chunk.Remaining.Uint64() == 0 {
-			bot.UnregisterAmm(ammId)
+			bot.UntrackedAmm(ammId)
 			log.Printf("%s | No more chunk remaining ", ammId)
 			return
 		} else {
