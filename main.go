@@ -4,6 +4,7 @@ import (
 	"errors"
 	"log"
 	"math/big"
+	"time"
 
 	"github.com/gagliardetto/solana-go"
 	"github.com/iqbalbaharum/go-solana-mev-bot/internal/adapter"
@@ -147,6 +148,8 @@ func processWithdraw(ins generators.TxInstruction, tx generators.GeyserResponse)
 		log.Printf("%s | %s", ammId, err)
 		return
 	}
+
+	time.Sleep(3 * time.Second)
 
 	reserve, err := liquidity.GetPoolSolBalance(pKey)
 	if err != nil {
