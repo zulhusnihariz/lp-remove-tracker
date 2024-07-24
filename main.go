@@ -378,7 +378,7 @@ func processSwapBaseIn(ins generators.TxInstruction, tx generators.GeyserRespons
 		}
 
 		compute := instructions.ComputeUnit{
-			MicroLamports: 1000000,
+			MicroLamports: 5000000,
 			Units:         40000,
 			Tip:           tip,
 		}
