@@ -372,13 +372,13 @@ func processSwapBaseIn(ins generators.TxInstruction, tx generators.GeyserRespons
 			minAmountOut = 200000000
 			useStakedRPCFlag = true
 		} else {
-			tip = 10000000
+			tip = 1000000
 			minAmountOut = 1000000
 			useStakedRPCFlag = true
 		}
 
 		compute := instructions.ComputeUnit{
-			MicroLamports: 5000000,
+			MicroLamports: 10000000,
 			Units:         40000,
 			Tip:           tip,
 		}
