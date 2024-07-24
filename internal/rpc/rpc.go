@@ -208,7 +208,7 @@ func GetAccountInfo(publicKey solana.PublicKey, dataSlice *rpc.DataSlice) (*Acco
 
 func GetBalance(publicKey solana.PublicKey) (uint64, error) {
 	params := map[string]interface{}{
-		"commitment": "confirmed",
+		"commitment": "processed",
 	}
 
 	reqParams := []interface{}{
