@@ -157,24 +157,20 @@ func processWithdraw(ins generators.TxInstruction, tx generators.GeyserResponse)
 		return
 	}
 
-	blockhash, err := solana.HashFromBase58(latestBlockhash)
-
-	if err != nil {
-		log.Print(err)
-		return
-	}
-
 	compute := instructions.ComputeUnit{
 		MicroLamports: 1000000,
 		Units:         85000,
 		Tip:           0,
 	}
 
+	blockhash, err := solana.HashFromBase58(latestBlockhash)
+	// blockhash, err := rpc.GetLatestBlockhash()
+
 	options := instructions.TxOption{
 		Blockhash: blockhash,
 	}
 
-	signatures, transaction, err := instructions.MakeSwapInstructions(
+	signatures, rpcTx, err := instructions.MakeSwapInstructions(
 		pKey,
 		wsolTokenAccount,
 		compute,
@@ -185,6 +181,17 @@ func processWithdraw(ins generators.TxInstruction, tx generators.GeyserResponse)
 		"rpc",
 	)
 
+	// _, bloxRouteTx, err := instructions.MakeSwapInstructions(
+	// 	pKey,
+	// 	wsolTokenAccount,
+	// 	compute,
+	// 	options,
+	// 	1000000,
+	// 	0,
+	// 	"buy",
+	// 	"bloxroute",
+	// )
+
 	if err != nil {
 		log.Print(err)
 		return
@@ -192,7 +199,13 @@ func processWithdraw(ins generators.TxInstruction, tx generators.GeyserResponse)
 
 	log.Printf("%s | BUY | %s", ammId, signatures)
 
-	rpc.SendTransaction(transaction)
+	err = rpc.SendTransaction(rpcTx)
+	// _, err = rpc.SubmitBloxRouteTransaction(bloxRouteTx, false)
+
+	// if err != nil {
+	// 	log.Print(err)
+	// 	return
+	// }
 }
 
 /**
@@ -279,6 +292,7 @@ func processSwapBaseIn(ins generators.TxInstruction, tx generators.GeyserRespons
 				})
 
 				bot.RegisterAmm(ammId)
+				log.Printf("%s | Tracked", ammId)
 			}
 			return
 		}
@@ -296,7 +310,7 @@ func processSwapBaseIn(ins generators.TxInstruction, tx generators.GeyserRespons
 	}
 
 	// Only proceed if the amount is greater than 0.011 SOL and amount of SOL is a negative number (represent buy action)
-	log.Printf("%s | %d | %s | %s", ammId, amount.Sign(), amountSol, tx.MempoolTxns.Signature)
+	// log.Printf("%s | %d | %s | %s", ammId, amount.Sign(), amountSol, tx.MempoolTxns.Signature)
 	if amount.Sign() == -1 && amountSol.Cmp(big.NewInt(1000000)) == 1 {
 		log.Printf("%s | Potential entry %d SOL | %s", ammId, amountSol, tx.MempoolTxns.Signature)
 

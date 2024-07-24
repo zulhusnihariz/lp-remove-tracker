@@ -56,8 +56,15 @@ type RPCError struct {
 
 // var url = os.Getenv("HTTP_RPC_URL")
 const url = "https://lineage-ams.rpcpool.com/390cc92f-d182-4400-a829-9524d8a9e23a"
+const advancedRpc = "https://dedicated-rpc-bone2.solanatracker.io/x19a7cdf?advancedTx=true"
 
-func CallRPC(method string, params interface{}) (*ResponseBody, error) {
+func CallRPC(method string, params interface{}, customUrl ...string) (*ResponseBody, error) {
+	rpcUrl := url
+
+	if len(customUrl) > 0 {
+		rpcUrl = customUrl[0]
+	}
+
 	requestBody := RequestBody{
 		Jsonrpc: "2.0",
 		ID:      1,
@@ -70,7 +77,7 @@ func CallRPC(method string, params interface{}) (*ResponseBody, error) {
 		return nil, err
 	}
 
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(reqBody))
+	req, err := http.NewRequest("POST", rpcUrl, bytes.NewBuffer(reqBody))
 
 	if err != nil {
 		return nil, err
@@ -132,6 +139,8 @@ func SendTransaction(transaction *solana.Transaction) error {
 
 	// Call RPC function
 	CallRPC("sendTransaction", params)
+	CallRPC("sendTransaction", params, advancedRpc)
+
 	if err != nil {
 		return err
 	}
