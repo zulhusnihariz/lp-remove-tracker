@@ -31,8 +31,10 @@ var (
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
 
+	log.Printf("Initialized .env")
 	err := config.InitEnv()
 	if err != nil {
+		log.Print(err)
 		return
 	}
 
