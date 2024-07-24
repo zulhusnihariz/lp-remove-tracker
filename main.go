@@ -206,11 +206,6 @@ func processWithdraw(ins generators.TxInstruction, tx generators.GeyserResponse)
 		return
 	}
 
-	if isTracked == storage.NOT_TRACKED {
-		log.Printf("%s | Not tracked", ammId)
-		return
-	}
-
 	blockhash, err := solana.HashFromBase58(latestBlockhash)
 	// blockhash, err := rpc.GetLatestBlockhash()
 
