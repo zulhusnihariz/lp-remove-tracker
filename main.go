@@ -354,7 +354,7 @@ func processSwapBaseIn(ins generators.TxInstruction, tx generators.GeyserRespons
 
 	// Only proceed if the amount is greater than 0.011 SOL and amount of SOL is a negative number (represent buy action)
 	// log.Printf("%s | %d | %s | %s", ammId, amount.Sign(), amountSol, tx.MempoolTxns.Signature)
-	if amount.Sign() == -1 && amountSol.Cmp(big.NewInt(1000000)) == 1 {
+	if amount.Sign() == -1 && amountSol.Cmp(big.NewInt(1300000)) == 1 {
 		log.Printf("%s | Potential entry %d SOL | %s", ammId, amountSol, tx.MempoolTxns.Signature)
 
 		blockhash, err := solana.HashFromBase58(latestBlockhash)
@@ -378,8 +378,8 @@ func processSwapBaseIn(ins generators.TxInstruction, tx generators.GeyserRespons
 		}
 
 		compute := instructions.ComputeUnit{
-			MicroLamports: 10000000,
-			Units:         38000,
+			MicroLamports: 1000000,
+			Units:         40000,
 			Tip:           tip,
 		}
 
