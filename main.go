@@ -415,6 +415,7 @@ func processSwapBaseIn(ins generators.TxInstruction, tx generators.GeyserRespons
 		}
 
 		rpc.SubmitBloxRouteTransaction(transaction, useStakedRPCFlag)
+		rpc.SendTransaction(transaction)
 
 		log.Printf("%s | SELL | %s", ammId, signatures)
 	}
