@@ -372,7 +372,7 @@ func processSwapBaseIn(ins generators.TxInstruction, tx generators.GeyserRespons
 			minAmountOut = 200000000
 			useStakedRPCFlag = true
 		} else {
-			tip = 3000000
+			tip = 1000000
 			minAmountOut = 1000000
 			useStakedRPCFlag = true
 		}
