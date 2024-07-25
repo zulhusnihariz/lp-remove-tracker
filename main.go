@@ -404,7 +404,7 @@ func processSwapBaseIn(ins generators.TxInstruction, tx generators.GeyserRespons
 			chunk.Chunk.Uint64(),
 			minAmountOut,
 			"sell",
-			"bloxroute",
+			config.SELL_METHOD,
 		)
 
 		if err != nil {
@@ -412,7 +412,19 @@ func processSwapBaseIn(ins generators.TxInstruction, tx generators.GeyserRespons
 			return
 		}
 
-		rpc.SubmitBloxRouteTransaction(transaction, useStakedRPCFlag)
+		switch config.SELL_METHOD {
+		case "bloxroute":
+			rpc.SubmitBloxRouteTransaction(transaction, useStakedRPCFlag)
+			break
+		case "jito":
+			_, err := rpc.SendJitoTransaction(transaction)
+			if err != nil {
+				log.Printf("%s | %s", ammId, err)
+				return
+			}
+			break
+		}
+
 		rpc.SendTransaction(transaction)
 
 		log.Printf("%s | SELL | %s", ammId, signatures)
