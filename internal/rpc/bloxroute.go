@@ -37,6 +37,7 @@ func SubmitBloxRouteTransaction(transaction *solana.Transaction, useStakedRPCs b
 		},
 		"skipPreFlight":          true,
 		"frontRunningProtection": false,
+		"fastBestEffort":         false,
 		"useStakedRPCs":          useStakedRPCs,
 	}
 

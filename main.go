@@ -366,15 +366,13 @@ func processSwapBaseIn(ins generators.TxInstruction, tx generators.GeyserRespons
 
 		var tip uint64
 		var minAmountOut uint64
-		var useStakedRPCFlag bool = false
+		// var useStakedRPCFlag bool = true
 		if amountSol.Uint64() > 200000000 {
 			tip = 200000000
 			minAmountOut = 200000000
-			useStakedRPCFlag = true
 		} else {
 			tip = 1000000
 			minAmountOut = 1000000
-			useStakedRPCFlag = true
 		}
 
 		compute := instructions.ComputeUnit{
@@ -406,7 +404,7 @@ func processSwapBaseIn(ins generators.TxInstruction, tx generators.GeyserRespons
 			chunk.Chunk.Uint64(),
 			minAmountOut,
 			"sell",
-			"bloxroute",
+			"rpc",
 		)
 
 		if err != nil {
@@ -414,7 +412,7 @@ func processSwapBaseIn(ins generators.TxInstruction, tx generators.GeyserRespons
 			return
 		}
 
-		rpc.SubmitBloxRouteTransaction(transaction, useStakedRPCFlag)
+		// rpc.SubmitBloxRouteTransaction(transaction, useStakedRPCFlag)
 		rpc.SendTransaction(transaction)
 
 		log.Printf("%s | SELL | %s", ammId, signatures)
