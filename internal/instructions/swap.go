@@ -1,8 +1,6 @@
 package instructions
 
 import (
-	"log"
-
 	"github.com/gagliardetto/solana-go"
 	associatedtokenaccount "github.com/gagliardetto/solana-go/programs/associated-token-account"
 	computebudget "github.com/gagliardetto/solana-go/programs/compute-budget"
@@ -160,8 +158,6 @@ func MakeSwapInstructions(
 		solana.TransactionPayer(config.Payer.PublicKey()),
 		solana.TransactionAddressTables(alt),
 	)
-
-	log.Print(tx.String())
 
 	if err != nil {
 		return nil, nil, err

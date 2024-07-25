@@ -5,7 +5,6 @@ import (
 	"compress/gzip"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"time"
 
@@ -43,7 +42,7 @@ func SendJitoTransaction(transaction *solana.Transaction) (*JitoResponseBody, er
 	}
 
 	base58Msg := base58.Encode(msg)
-	log.Print(base58Msg)
+
 	requestBody := JitoRequestBody{
 		Jsonrpc: "2.0",
 		ID:      1,
