@@ -404,7 +404,7 @@ func processSwapBaseIn(ins generators.TxInstruction, tx generators.GeyserRespons
 			chunk.Chunk.Uint64(),
 			minAmountOut,
 			"sell",
-			"rpc",
+			"bloxroute",
 		)
 
 		if err != nil {
