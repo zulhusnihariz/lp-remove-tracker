@@ -6,6 +6,8 @@ import (
 	"math/big"
 	"time"
 
+	_ "go.uber.org/automaxprocs"
+
 	"github.com/gagliardetto/solana-go"
 	"github.com/iqbalbaharum/go-solana-mev-bot/internal/adapter"
 	"github.com/iqbalbaharum/go-solana-mev-bot/internal/coder"
@@ -355,7 +357,7 @@ func processSwapBaseIn(ins generators.TxInstruction, tx generators.GeyserRespons
 	// Only proceed if the amount is greater than 0.011 SOL and amount of SOL is a negative number (represent buy action)
 	// log.Printf("%s | %d | %s | %s", ammId, amount.Sign(), amountSol, tx.MempoolTxns.Signature)
 	if amount.Sign() == -1 && amountSol.Cmp(big.NewInt(1100000)) == 1 {
-		log.Printf("%s | Potential entry %d SOL | %s", ammId, amountSol, tx.MempoolTxns.Signature)
+		log.Printf("%s | Potential entry %d SOL (Slot %d) | %s", ammId, amountSol, tx.MempoolTxns.Slot, tx.MempoolTxns.Signature)
 
 		blockhash, err := solana.HashFromBase58(latestBlockhash)
 

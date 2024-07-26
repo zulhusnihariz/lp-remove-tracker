@@ -55,6 +55,7 @@ type MempoolTxn struct {
 	PreTokenBalances     []types.TxTokenBalance `json:"preTokenBalances"`
 	PostTokenBalances    []types.TxTokenBalance `json:"postTokenBalances"`
 	ComputeUnitsConsumed uint64                 `json:"computeUnitsConsumed"`
+	Slot                 uint64                 `json:"slot"`
 }
 
 type TxInstruction struct {
@@ -171,7 +172,7 @@ func GrpcSubscribeByAddresses(grpcToken string, accountInclude []string, account
 		// timestamp := time.Now().UnixNano()
 
 		if err == io.EOF {
-			return nil
+			// return nil
 		}
 
 		if err != nil {
@@ -179,7 +180,7 @@ func GrpcSubscribeByAddresses(grpcToken string, accountInclude []string, account
 		}
 
 		if resp.GetTransaction() != nil {
-			// meta := resp.GetTransaction().Transaction.Meta
+
 			message := resp.GetTransaction().Transaction.Transaction.Message
 			meta := resp.GetTransaction().Transaction.Meta
 
@@ -194,6 +195,7 @@ func GrpcSubscribeByAddresses(grpcToken string, accountInclude []string, account
 					PreTokenBalances:     convertTokenBalances(meta.PreTokenBalances),
 					PostTokenBalances:    convertTokenBalances(meta.PostTokenBalances),
 					ComputeUnitsConsumed: *resp.GetTransaction().Transaction.GetMeta().ComputeUnitsConsumed,
+					Slot:                 resp.GetTransaction().Slot,
 				},
 			}
 
