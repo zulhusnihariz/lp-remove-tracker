@@ -63,7 +63,7 @@ func main() {
 
 	generators.GrpcSubscribeByAddresses(
 		config.GrpcToken,
-		[]string{config.RAYDIUM_AMM_V4.String()},
+		[]string{"E7sZEjaY2aH3BVNSVmZFUPoKiRrpvc7uCpWMBhzGhko8"},
 		[]string{}, txChannel)
 
 	defer func() {
