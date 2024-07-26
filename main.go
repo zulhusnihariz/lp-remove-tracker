@@ -76,7 +76,7 @@ func main() {
 func processResponse(response generators.GeyserResponse) {
 	// Your processing logic here
 	latestBlockhash = response.MempoolTxns.RecentBlockhash
-
+	log.Print(response.MempoolTxns.Signature)
 	c := coder.NewRaydiumAmmInstructionCoder()
 	for _, ins := range response.MempoolTxns.Instructions {
 		programId := response.MempoolTxns.AccountKeys[ins.ProgramIdIndex]
