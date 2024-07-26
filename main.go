@@ -4,6 +4,7 @@ import (
 	"errors"
 	"log"
 	"math/big"
+	"runtime"
 	"time"
 
 	_ "go.uber.org/automaxprocs"
@@ -33,6 +34,9 @@ var (
 )
 
 func main() {
+
+	runtime.GOMAXPROCS(runtime.NumCPU())
+
 	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
 
 	log.Printf("Initialized .env")
@@ -63,7 +67,7 @@ func main() {
 
 	generators.GrpcSubscribeByAddresses(
 		config.GrpcToken,
-		[]string{"E7sZEjaY2aH3BVNSVmZFUPoKiRrpvc7uCpWMBhzGhko8"},
+		[]string{config.RAYDIUM_AMM_V4.String()},
 		[]string{}, txChannel)
 
 	defer func() {

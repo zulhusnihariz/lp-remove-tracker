@@ -90,8 +90,8 @@ func GrpcConnect(address string, plaintext bool) {
 	}
 
 	opts = append(opts, grpc.WithKeepaliveParams(kacp))
-	opts = append(opts, grpc.WithInitialWindowSize(1<<20))     // 1 MB
-	opts = append(opts, grpc.WithInitialConnWindowSize(1<<20)) // 1 MB
+	opts = append(opts, grpc.WithInitialWindowSize(4<<20))     // 4 MB
+	opts = append(opts, grpc.WithInitialConnWindowSize(4<<20)) // 4 MB
 	opts = append(opts, grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(1<<30)))
 
 	log.Println("Starting grpc client, connecting to", address)
