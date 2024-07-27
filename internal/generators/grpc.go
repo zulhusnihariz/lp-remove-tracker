@@ -90,8 +90,8 @@ func GrpcConnect(address string, plaintext bool) {
 	}
 
 	opts = append(opts, grpc.WithKeepaliveParams(kacp))
-	opts = append(opts, grpc.WithInitialWindowSize(4<<20))     // 4 MB
-	opts = append(opts, grpc.WithInitialConnWindowSize(4<<20)) // 4 MB
+	opts = append(opts, grpc.WithInitialWindowSize(100<<20))     // 4 MB
+	opts = append(opts, grpc.WithInitialConnWindowSize(100<<20)) // 4 MB
 	opts = append(opts, grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(1<<30)))
 
 	log.Println("Starting grpc client, connecting to", address)
@@ -169,7 +169,6 @@ func GrpcSubscribeByAddresses(grpcToken string, accountInclude []string, account
 
 	for {
 		resp, err := stream.Recv()
-		// timestamp := time.Now().UnixNano()
 
 		if err == io.EOF {
 			// return nil
