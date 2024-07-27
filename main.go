@@ -379,13 +379,15 @@ func processSwapBaseIn(ins generators.TxInstruction, tx generators.GeyserRespons
 
 		// Attempt to execute sell 3x
 		sellToken(pKey, sourceTokenAccount, chunk, minAmountOut, ammId, compute, useStakedRPCFlag)
-		time.Sleep(10 * time.Second)
+		time.Sleep(5 * time.Second)
 
 		compute.MicroLamports = 100000
 		compute.Tip = 0
 
 		sellToken(pKey, sourceTokenAccount, chunk, minAmountOut, ammId, compute, useStakedRPCFlag)
-		time.Sleep(30 * time.Second)
+		time.Sleep(5 * time.Second)
+
+		compute.MicroLamports = 90000
 
 		sellToken(pKey, sourceTokenAccount, chunk, minAmountOut, ammId, compute, useStakedRPCFlag)
 	}
