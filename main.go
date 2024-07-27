@@ -35,6 +35,11 @@ var (
 
 func main() {
 
+	numCPU := runtime.NumCPU()
+	maxProcs := runtime.GOMAXPROCS(0)
+	log.Printf("Number of logical CPUs available: %d", numCPU)
+	log.Printf("Number of CPUs being used: %d", maxProcs)
+
 	runtime.GOMAXPROCS(runtime.NumCPU())
 
 	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
