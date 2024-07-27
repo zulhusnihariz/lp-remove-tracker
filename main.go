@@ -46,6 +46,9 @@ func main() {
 		return
 	}
 
+	log.Printf("Wallet: %s", config.Payer.PublicKey())
+	log.Printf("SELL Method: %s", config.SELL_METHOD)
+
 	ata, err := getOrCreateAssociatedTokenAccount()
 	if err != nil {
 		log.Print(err)
@@ -230,17 +233,6 @@ func processWithdraw(ins generators.TxInstruction, tx generators.GeyserResponse)
 		"rpc",
 	)
 
-	// _, bloxRouteTx, err := instructions.MakeSwapInstructions(
-	// 	pKey,
-	// 	wsolTokenAccount,
-	// 	compute,
-	// 	options,
-	// 	1000000,
-	// 	0,
-	// 	"buy",
-	// 	"bloxroute",
-	// )
-
 	if err != nil {
 		log.Print(err)
 		return
@@ -249,12 +241,6 @@ func processWithdraw(ins generators.TxInstruction, tx generators.GeyserResponse)
 	log.Printf("%s | BUY | %s", ammId, signatures)
 
 	err = rpc.SendTransaction(rpcTx)
-	// _, err = rpc.SubmitBloxRouteTransaction(bloxRouteTx, false)
-
-	// if err != nil {
-	// 	log.Print(err)
-	// 	return
-	// }
 }
 
 /**
@@ -363,13 +349,6 @@ func processSwapBaseIn(ins generators.TxInstruction, tx generators.GeyserRespons
 	if amount.Sign() == -1 && amountSol.Cmp(big.NewInt(1100000)) == 1 {
 		log.Printf("%s | Potential entry %d SOL (Slot %d) | %s", ammId, amountSol, tx.MempoolTxns.Slot, tx.MempoolTxns.Signature)
 
-		blockhash, err := solana.HashFromBase58(latestBlockhash)
-
-		if err != nil {
-			log.Print(err)
-			return
-		}
-
 		var tip uint64
 		var minAmountOut uint64
 		var useStakedRPCFlag bool = true
@@ -387,10 +366,6 @@ func processSwapBaseIn(ins generators.TxInstruction, tx generators.GeyserRespons
 			Tip:           tip,
 		}
 
-		options := instructions.TxOption{
-			Blockhash: blockhash,
-		}
-
 		chunk, err := bot.GetTokenChunk(ammId)
 		if err != nil {
 			log.Printf("%s | %s", ammId, err)
@@ -402,39 +377,71 @@ func processSwapBaseIn(ins generators.TxInstruction, tx generators.GeyserRespons
 			return
 		}
 
-		signatures, transaction, err := instructions.MakeSwapInstructions(
-			pKey,
-			wsolTokenAccount,
-			compute,
-			options,
-			chunk.Chunk.Uint64(),
-			minAmountOut,
-			"sell",
-			config.SELL_METHOD,
-		)
+		// Attempt to execute sell 3x
+		sellToken(pKey, sourceTokenAccount, chunk, minAmountOut, ammId, compute, useStakedRPCFlag)
+		time.Sleep(10 * time.Second)
 
+		compute.MicroLamports = 100000
+		compute.Tip = 0
+
+		sellToken(pKey, sourceTokenAccount, chunk, minAmountOut, ammId, compute, useStakedRPCFlag)
+		time.Sleep(30 * time.Second)
+
+		sellToken(pKey, sourceTokenAccount, chunk, minAmountOut, ammId, compute, useStakedRPCFlag)
+	}
+}
+
+func sellToken(
+	pKey *types.RaydiumPoolKeys,
+	wsolTokenAccount *solana.PublicKey,
+	chunk types.TokenChunk,
+	minAmountOut uint64,
+	ammId *solana.PublicKey,
+	compute instructions.ComputeUnit,
+	useStakedRPCFlag bool) {
+
+	blockhash, err := solana.HashFromBase58(latestBlockhash)
+	if err != nil {
+		log.Print(err)
+		return
+	}
+
+	options := instructions.TxOption{
+		Blockhash: blockhash,
+	}
+
+	signatures, transaction, err := instructions.MakeSwapInstructions(
+		pKey,
+		*wsolTokenAccount,
+		compute,
+		options,
+		chunk.Chunk.Uint64(),
+		minAmountOut,
+		"sell",
+		config.SELL_METHOD,
+	)
+
+	if err != nil {
+		log.Printf("%s | %s", ammId, err)
+		return
+	}
+
+	switch config.SELL_METHOD {
+	case "bloxroute":
+		rpc.SubmitBloxRouteTransaction(transaction, useStakedRPCFlag)
+		break
+	case "jito":
+		_, err := rpc.SendJitoTransaction(transaction)
 		if err != nil {
 			log.Printf("%s | %s", ammId, err)
 			return
 		}
-
-		switch config.SELL_METHOD {
-		case "bloxroute":
-			rpc.SubmitBloxRouteTransaction(transaction, useStakedRPCFlag)
-			break
-		case "jito":
-			_, err := rpc.SendJitoTransaction(transaction)
-			if err != nil {
-				log.Printf("%s | %s", ammId, err)
-				return
-			}
-			break
-		}
-
-		rpc.SendTransaction(transaction)
-
-		log.Printf("%s | SELL | %s", ammId, signatures)
+		break
 	}
+
+	rpc.SendTransaction(transaction)
+
+	log.Printf("%s | SELL | %s", ammId, signatures)
 }
 
 func getOrCreateAssociatedTokenAccount() (*solana.PublicKey, error) {

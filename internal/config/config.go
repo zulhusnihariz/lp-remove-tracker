@@ -22,7 +22,7 @@ var (
 	LAMPORTS_PER_SOL  = 1000000000
 	TA_RENT_LAMPORTS  = 2039280
 	TA_SIZE           = 165
-	SELL_METHOD       = "bloxkroute" // "rpc", "bloxroute", "jito"
+	SELL_METHOD       = "bloxroute" // "rpc", "bloxroute", "jito"
 	BLOCKENGINE_URL   = "https://amsterdam.mainnet.block-engine.jito.wtf"
 )
 
