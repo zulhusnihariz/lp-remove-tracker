@@ -383,24 +383,23 @@ func processSwapBaseIn(ins generators.TxInstruction, tx generators.GeyserRespons
 		}
 
 		// Attempt to execute sell 3x
-		sellToken(pKey, sourceTokenAccount, chunk, minAmountOut, ammId, compute, useStakedRPCFlag)
+		sellToken(pKey, chunk, minAmountOut, ammId, compute, useStakedRPCFlag)
 		time.Sleep(5 * time.Second)
 
 		compute.MicroLamports = 100000
 		compute.Tip = 0
 
-		sellToken(pKey, sourceTokenAccount, chunk, minAmountOut, ammId, compute, useStakedRPCFlag)
+		sellToken(pKey, chunk, minAmountOut, ammId, compute, useStakedRPCFlag)
 		time.Sleep(5 * time.Second)
 
 		compute.MicroLamports = 90000
 
-		sellToken(pKey, sourceTokenAccount, chunk, minAmountOut, ammId, compute, useStakedRPCFlag)
+		sellToken(pKey, chunk, minAmountOut, ammId, compute, useStakedRPCFlag)
 	}
 }
 
 func sellToken(
 	pKey *types.RaydiumPoolKeys,
-	wsolTokenAccount *solana.PublicKey,
 	chunk types.TokenChunk,
 	minAmountOut uint64,
 	ammId *solana.PublicKey,
@@ -419,7 +418,7 @@ func sellToken(
 
 	signatures, transaction, err := instructions.MakeSwapInstructions(
 		pKey,
-		*wsolTokenAccount,
+		wsolTokenAccount,
 		compute,
 		options,
 		chunk.Chunk.Uint64(),
