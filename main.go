@@ -366,7 +366,7 @@ func processSwapBaseIn(ins generators.TxInstruction, tx generators.GeyserRespons
 		}
 
 		compute := instructions.ComputeUnit{
-			MicroLamports: 2000000,
+			MicroLamports: 10000000,
 			Units:         38000,
 			Tip:           tip,
 		}
@@ -386,13 +386,13 @@ func processSwapBaseIn(ins generators.TxInstruction, tx generators.GeyserRespons
 		sellToken(pKey, chunk, minAmountOut, ammId, compute, useStakedRPCFlag)
 		time.Sleep(5 * time.Second)
 
-		compute.MicroLamports = 100000
+		compute.MicroLamports = 1000000
 		compute.Tip = 0
 
 		sellToken(pKey, chunk, minAmountOut, ammId, compute, useStakedRPCFlag)
 		time.Sleep(5 * time.Second)
 
-		compute.MicroLamports = 90000
+		compute.MicroLamports = 900000
 
 		sellToken(pKey, chunk, minAmountOut, ammId, compute, useStakedRPCFlag)
 	}
