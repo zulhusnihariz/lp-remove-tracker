@@ -7,6 +7,7 @@ import (
 	"errors"
 	"io"
 	"log"
+	"sync"
 	"time"
 
 	"github.com/gagliardetto/solana-go"
@@ -111,12 +112,10 @@ func CloseConnection() error {
 	return nil
 }
 
-func GrpcSubscribeByAddresses(grpcToken string, accountInclude []string, accountExclude []string, txChannel chan<- GeyserResponse) error {
+func GrpcSubscribeByAddresses(grpcToken string, accountInclude []string, accountExclude []string, txChannel chan<- GeyserResponse, wg *sync.WaitGroup) error {
 	if client == nil {
 		return errors.New("GRPC not connected")
 	}
-
-	defer close(txChannel)
 
 	var subscription pb.SubscribeRequest = pb.SubscribeRequest{
 		Slots:        make(map[string]*pb.SubscribeRequestFilterSlots),
@@ -157,7 +156,9 @@ func GrpcSubscribeByAddresses(grpcToken string, accountInclude []string, account
 		ctx = metadata.NewOutgoingContext(ctx, md)
 	}
 
-	stream, err := client.Subscribe(ctx)
+	stream, err := client.Subscribe(ctx,
+		grpc.MaxCallRecvMsgSize(100<<20),
+	)
 	if err != nil {
 		log.Fatalf("%v", err)
 	}
@@ -167,41 +168,59 @@ func GrpcSubscribeByAddresses(grpcToken string, accountInclude []string, account
 		log.Fatalf("%v", err)
 	}
 
-	for {
-		resp, err := stream.Recv()
+	done := make(chan struct{})
 
-		if err == io.EOF {
-			// return nil
+	go func() {
+		log.Print("goroutine created")
+
+		defer close(txChannel)
+		defer close(done)
+
+		if stream == nil {
+			log.Print("stream is nil")
+			return
 		}
 
-		if err != nil {
-			log.Fatalf("Error occurred in receiving update: %v", err)
-		}
+		for {
+			resp, err := stream.Recv()
 
-		if resp.GetTransaction() != nil {
-
-			message := resp.GetTransaction().Transaction.Transaction.Message
-			meta := resp.GetTransaction().Transaction.Meta
-
-			response := &GeyserResponse{
-				MempoolTxns: MempoolTxn{
-					Source:               "grpc",
-					Signature:            base58.Encode(resp.GetTransaction().Transaction.Signature),
-					AccountKeys:          convertAccountKeys(message.AccountKeys),
-					RecentBlockhash:      base58.Encode(message.RecentBlockhash),
-					Instructions:         convertInstructions(message.Instructions),
-					AddressTableLookups:  convertAddressTableLookups(message.AddressTableLookups),
-					PreTokenBalances:     convertTokenBalances(meta.PreTokenBalances),
-					PostTokenBalances:    convertTokenBalances(meta.PostTokenBalances),
-					ComputeUnitsConsumed: *resp.GetTransaction().Transaction.GetMeta().ComputeUnitsConsumed,
-					Slot:                 resp.GetTransaction().Slot,
-				},
+			if err == io.EOF {
+				return
 			}
 
-			txChannel <- *response
+			if err != nil {
+				log.Printf("Error occurred in receiving update: %v", err)
+			}
+
+			if resp.GetTransaction() != nil {
+
+				message := resp.GetTransaction().Transaction.Transaction.Message
+				meta := resp.GetTransaction().Transaction.Meta
+
+				response := &GeyserResponse{
+					MempoolTxns: MempoolTxn{
+						Source:               "grpc",
+						Signature:            base58.Encode(resp.GetTransaction().Transaction.Signature),
+						AccountKeys:          convertAccountKeys(message.AccountKeys),
+						RecentBlockhash:      base58.Encode(message.RecentBlockhash),
+						Instructions:         convertInstructions(message.Instructions),
+						AddressTableLookups:  convertAddressTableLookups(message.AddressTableLookups),
+						PreTokenBalances:     convertTokenBalances(meta.PreTokenBalances),
+						PostTokenBalances:    convertTokenBalances(meta.PostTokenBalances),
+						ComputeUnitsConsumed: *resp.GetTransaction().Transaction.GetMeta().ComputeUnitsConsumed,
+						Slot:                 resp.GetTransaction().Slot,
+					},
+				}
+
+				txChannel <- *response
+			}
 		}
-		// log.Printf("%v %v", timestamp, bs58.Encode(resp.GetTransaction().Transaction.GetSignature()))
-	}
+	}()
+
+	<-done
+	log.Print("Goroutine finished")
+
+	return nil
 }
 
 func convertAccountKeys(accountKeys [][]byte) []string {
