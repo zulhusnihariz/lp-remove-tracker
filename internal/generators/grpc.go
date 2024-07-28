@@ -7,7 +7,6 @@ import (
 	"errors"
 	"io"
 	"log"
-	"sync"
 	"time"
 
 	"github.com/gagliardetto/solana-go"
@@ -112,10 +111,12 @@ func CloseConnection() error {
 	return nil
 }
 
-func GrpcSubscribeByAddresses(grpcToken string, accountInclude []string, accountExclude []string, txChannel chan<- GeyserResponse, wg *sync.WaitGroup) error {
+func GrpcSubscribeByAddresses(grpcToken string, accountInclude []string, accountExclude []string, txChannel chan<- GeyserResponse) error {
 	if client == nil {
 		return errors.New("GRPC not connected")
 	}
+
+	defer close(txChannel)
 
 	var subscription pb.SubscribeRequest = pb.SubscribeRequest{
 		Slots:        make(map[string]*pb.SubscribeRequestFilterSlots),
@@ -146,6 +147,7 @@ func GrpcSubscribeByAddresses(grpcToken string, accountInclude []string, account
 	subscriptionJson, err := json.Marshal(&subscription)
 	if err != nil {
 		log.Printf("Failed to marshal subscription request: %v", subscriptionJson)
+		return err
 	}
 	log.Printf("Subscription request: %s", string(subscriptionJson))
 
@@ -159,66 +161,53 @@ func GrpcSubscribeByAddresses(grpcToken string, accountInclude []string, account
 	stream, err := client.Subscribe(ctx,
 		grpc.MaxCallRecvMsgSize(100<<20),
 	)
+
 	if err != nil {
 		log.Fatalf("%v", err)
+		return err
 	}
 
 	err = stream.Send(&subscription)
 	if err != nil {
 		log.Fatalf("%v", err)
+		return err
 	}
 
-	done := make(chan struct{})
+	for {
+		resp, _ := stream.Recv()
 
-	go func() {
-		log.Print("goroutine created")
-
-		defer close(txChannel)
-		defer close(done)
-
-		if stream == nil {
-			log.Print("stream is nil")
-			return
+		if err == io.EOF {
+			// return
 		}
 
-		for {
-			resp, err := stream.Recv()
-
-			if err == io.EOF {
-				return
-			}
-
-			if err != nil {
-				log.Printf("Error occurred in receiving update: %v", err)
-			}
-
-			if resp.GetTransaction() != nil {
-
-				message := resp.GetTransaction().Transaction.Transaction.Message
-				meta := resp.GetTransaction().Transaction.Meta
-
-				response := &GeyserResponse{
-					MempoolTxns: MempoolTxn{
-						Source:               "grpc",
-						Signature:            base58.Encode(resp.GetTransaction().Transaction.Signature),
-						AccountKeys:          convertAccountKeys(message.AccountKeys),
-						RecentBlockhash:      base58.Encode(message.RecentBlockhash),
-						Instructions:         convertInstructions(message.Instructions),
-						AddressTableLookups:  convertAddressTableLookups(message.AddressTableLookups),
-						PreTokenBalances:     convertTokenBalances(meta.PreTokenBalances),
-						PostTokenBalances:    convertTokenBalances(meta.PostTokenBalances),
-						ComputeUnitsConsumed: *resp.GetTransaction().Transaction.GetMeta().ComputeUnitsConsumed,
-						Slot:                 resp.GetTransaction().Slot,
-					},
-				}
-
-				txChannel <- *response
-			}
+		if err != nil {
+			log.Printf("Error occurred in receiving update: %v", err)
+			break
 		}
-	}()
 
-	<-done
-	log.Print("Goroutine finished")
+		if resp.GetTransaction() != nil {
+
+			message := resp.GetTransaction().Transaction.Transaction.Message
+			meta := resp.GetTransaction().Transaction.Meta
+
+			response := &GeyserResponse{
+				MempoolTxns: MempoolTxn{
+					Source:               "grpc",
+					Signature:            base58.Encode(resp.GetTransaction().Transaction.Signature),
+					AccountKeys:          convertAccountKeys(message.AccountKeys),
+					RecentBlockhash:      base58.Encode(message.RecentBlockhash),
+					Instructions:         convertInstructions(message.Instructions),
+					AddressTableLookups:  convertAddressTableLookups(message.AddressTableLookups),
+					PreTokenBalances:     convertTokenBalances(meta.PreTokenBalances),
+					PostTokenBalances:    convertTokenBalances(meta.PostTokenBalances),
+					ComputeUnitsConsumed: *resp.GetTransaction().Transaction.GetMeta().ComputeUnitsConsumed,
+					Slot:                 resp.GetTransaction().Slot,
+				},
+			}
+
+			txChannel <- *response
+		}
+	}
 
 	return nil
 }

@@ -5,7 +5,6 @@ import (
 	"log"
 	"math/big"
 	"runtime"
-	"sync"
 	"time"
 
 	_ "go.uber.org/automaxprocs"
@@ -67,9 +66,6 @@ func main() {
 	generators.GrpcConnect(config.GrpcAddr, config.InsecureConnection)
 
 	txChannel := make(chan generators.GeyserResponse)
-	var wg sync.WaitGroup
-
-	wg.Add(1)
 
 	go func() {
 		for response := range txChannel {
@@ -80,16 +76,13 @@ func main() {
 	generators.GrpcSubscribeByAddresses(
 		config.GrpcToken,
 		[]string{config.RAYDIUM_AMM_V4.String()},
-		[]string{}, txChannel,
-		&wg)
+		[]string{}, txChannel)
 
 	defer func() {
 		if err := generators.CloseConnection(); err != nil {
 			log.Printf("Error closing gRPC connection: %v", err)
 		}
 	}()
-
-	wg.Wait()
 }
 
 func processResponse(response generators.GeyserResponse) {
