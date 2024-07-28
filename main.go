@@ -67,11 +67,14 @@ func main() {
 
 	txChannel := make(chan generators.GeyserResponse)
 
-	go func() {
-		for response := range txChannel {
-			processResponse(response)
-		}
-	}()
+	// Create a worker pool
+	for i := 0; i < numCPU; i++ {
+		go func() {
+			for response := range txChannel {
+				processResponse(response)
+			}
+		}()
+	}
 
 	generators.GrpcSubscribeByAddresses(
 		config.GrpcToken,
