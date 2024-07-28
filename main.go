@@ -71,7 +71,7 @@ func main() {
 	for i := 0; i < numCPU; i++ {
 		go func() {
 			for response := range txChannel {
-				processResponse(response)
+				processResponse(i, response)
 			}
 		}()
 	}
@@ -88,7 +88,7 @@ func main() {
 	}()
 }
 
-func processResponse(response generators.GeyserResponse) {
+func processResponse(id int, response generators.GeyserResponse) {
 	// Your processing logic here
 	latestBlockhash = response.MempoolTxns.RecentBlockhash
 
