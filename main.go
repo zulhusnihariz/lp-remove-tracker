@@ -205,12 +205,6 @@ func processWithdraw(ins generators.TxInstruction, tx generators.GeyserResponse)
 		return
 	}
 
-	compute := instructions.ComputeUnit{
-		MicroLamports: 1000000,
-		Units:         85000,
-		Tip:           0,
-	}
-
 	isTracked, err := bot.GetAmmTrackingStatus(ammId)
 	if err != nil {
 		log.Print(err)
@@ -223,32 +217,13 @@ func processWithdraw(ins generators.TxInstruction, tx generators.GeyserResponse)
 		return
 	}
 
-	blockhash, err := solana.HashFromBase58(latestBlockhash)
-	// blockhash, err := rpc.GetLatestBlockhash()
-
-	options := instructions.TxOption{
-		Blockhash: blockhash,
+	compute := instructions.ComputeUnit{
+		MicroLamports: 1000000,
+		Units:         85000,
+		Tip:           0,
 	}
 
-	signatures, rpcTx, err := instructions.MakeSwapInstructions(
-		pKey,
-		wsolTokenAccount,
-		compute,
-		options,
-		1000000,
-		0,
-		"buy",
-		"rpc",
-	)
-
-	if err != nil {
-		log.Print(err)
-		return
-	}
-
-	log.Printf("%s | BUY | %s", ammId, signatures)
-
-	err = rpc.SendTransaction(rpcTx)
+	buyToken(pKey, 1000000, 0, ammId, compute, false)
 }
 
 /**
@@ -385,20 +360,64 @@ func processSwapBaseIn(ins generators.TxInstruction, tx generators.GeyserRespons
 			return
 		}
 
-		// Attempt to execute sell 3x
 		sellToken(pKey, chunk, minAmountOut, ammId, compute, useStakedRPCFlag)
-		// time.Sleep(5 * time.Second)
-
-		// compute.MicroLamports = 1000000
-		// compute.Tip = 0
-
-		// sellToken(pKey, chunk, minAmountOut, ammId, compute, false)
-		// time.Sleep(5 * time.Second)
-
-		// compute.MicroLamports = 900000
-
-		// sellToken(pKey, chunk, minAmountOut, ammId, compute, false)
+		compute.MicroLamports = 20000000
+		compute.Units = 38000
+		compute.Tip = 0
+		sellToken(pKey, chunk, minAmountOut, ammId, compute, true)
 	}
+}
+
+func buyToken(
+	pKey *types.RaydiumPoolKeys,
+	amount uint64,
+	minAmountOut uint64,
+	ammId *solana.PublicKey,
+	compute instructions.ComputeUnit,
+	useStakedRPCFlag bool) {
+
+	blockhash, err := solana.HashFromBase58(latestBlockhash)
+	if err != nil {
+		log.Print(err)
+		return
+	}
+
+	options := instructions.TxOption{
+		Blockhash: blockhash,
+	}
+
+	signatures, transaction, err := instructions.MakeSwapInstructions(
+		pKey,
+		wsolTokenAccount,
+		compute,
+		options,
+		amount,
+		minAmountOut,
+		"buy",
+		config.BUY_METHOD,
+	)
+
+	if err != nil {
+		log.Printf("%s | %s", ammId, err)
+		return
+	}
+
+	switch config.SELL_METHOD {
+	case "bloxroute":
+		rpc.SubmitBloxRouteTransaction(transaction, useStakedRPCFlag)
+		break
+	case "jito":
+		_, err := rpc.SendJitoTransaction(transaction)
+		if err != nil {
+			log.Printf("%s | %s", ammId, err)
+			return
+		}
+		break
+	}
+
+	rpc.SendTransaction(transaction)
+
+	log.Printf("%s | BUY | %s", ammId, signatures)
 }
 
 func sellToken(
