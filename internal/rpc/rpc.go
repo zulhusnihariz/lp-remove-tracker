@@ -148,6 +148,32 @@ func SendTransaction(transaction *solana.Transaction) error {
 	return nil
 }
 
+func SendBatchTransactions(transactions []*solana.Transaction) error {
+
+	for _, tx := range transactions {
+		msg, err := tx.MarshalBinary()
+		if err != nil {
+			return err
+		}
+
+		txBase64 := base64.StdEncoding.EncodeToString(msg)
+		params := []interface{}{
+			txBase64,
+			map[string]interface{}{
+				"encoding":            "base64",
+				"skipPreflight":       true,
+				"maxRetries":          1,
+				"preflightCommitment": "confirmed",
+			},
+		}
+
+		CallRPC("sendTransaction", params)
+		CallRPC("sendTransaction", params, advancedRpc)
+	}
+
+	return nil
+}
+
 func GetLatestBlockhash() (solana.Hash, error) {
 	params := []interface{}{
 		map[string]interface{}{

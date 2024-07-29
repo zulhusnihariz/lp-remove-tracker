@@ -5,6 +5,7 @@ import (
 	"log"
 	"math/big"
 	"runtime"
+	"sync"
 	"time"
 
 	_ "go.uber.org/automaxprocs"
@@ -67,19 +68,31 @@ func main() {
 
 	txChannel := make(chan generators.GeyserResponse)
 
+	var wg sync.WaitGroup
+
 	// Create a worker pool
 	for i := 0; i < numCPU; i++ {
+		wg.Add(1)
 		go func() {
+			defer wg.Done()
 			for response := range txChannel {
 				processResponse(response)
 			}
 		}()
 	}
 
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		runBatchTransactionThread()
+	}()
+
 	generators.GrpcSubscribeByAddresses(
 		config.GrpcToken,
 		[]string{config.RAYDIUM_AMM_V4.String()},
 		[]string{}, txChannel)
+
+	wg.Wait()
 
 	defer func() {
 		if err := generators.CloseConnection(); err != nil {
@@ -88,8 +101,55 @@ func main() {
 	}()
 }
 
+func runBatchTransactionThread() {
+	ticker := time.NewTicker(1 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			runBatchTransactionProcess()
+		}
+	}
+}
+
+func runBatchTransactionProcess() {
+	if len(latestBlockhash) <= 0 {
+		return
+	}
+
+	trackedAMMs, err := bot.GetAllTrackedAmm()
+	if err != nil {
+		log.Printf("Error fetching tracked AMMs: %v", err)
+		return
+	}
+
+	var transactions []*solana.Transaction
+
+	for _, tracker := range *trackedAMMs {
+		if tracker.Status == storage.TRACKED_BOTH {
+			if tracker.LastUpdated > time.Now().Add(-30*time.Minute).Unix() {
+				go bot.TrackedAmm(tracker.AmmId, true)
+			} else {
+				tx, err := generateInstruction(tracker.AmmId)
+				if err != nil {
+					log.Print(err)
+				}
+
+				transactions = append(transactions, tx)
+			}
+		}
+	}
+
+	if len(transactions) > 0 {
+		log.Printf("Sending batch %d transactions", len(transactions))
+		if err := rpc.SendBatchTransactions(transactions); err != nil {
+			log.Printf("Error sending batch transactions: %v", err)
+		}
+	}
+}
+
 func processResponse(response generators.GeyserResponse) {
-	// Your processing logic here
 	latestBlockhash = response.MempoolTxns.RecentBlockhash
 
 	c := coder.NewRaydiumAmmInstructionCoder()
@@ -99,7 +159,6 @@ func processResponse(response generators.GeyserResponse) {
 		if programId == config.RAYDIUM_AMM_V4.String() {
 			decodedIx, err := c.Decode(ins.Data)
 			if err != nil {
-				// log.Println("Failed to decode instruction:", err)
 				continue
 			}
 
@@ -163,13 +222,13 @@ func processInitialize2(ins generators.TxInstruction, tx generators.GeyserRespon
 		return
 	}
 
-	status, err := bot.GetAmmTrackingStatus(ammId)
+	tracker, err := bot.GetAmmTrackingStatus(ammId)
 	if err != nil {
 		log.Print(err)
 		return
 	}
 
-	if status == storage.TRACKED {
+	if tracker.Status == storage.TRACKED_TRIGGER_ONLY || tracker.Status == storage.TRACKED_BOTH {
 		log.Printf("%s | Untracked because of initialize2", ammId)
 		bot.PauseAmmTracking(ammId)
 	}
@@ -205,15 +264,15 @@ func processWithdraw(ins generators.TxInstruction, tx generators.GeyserResponse)
 		return
 	}
 
-	isTracked, err := bot.GetAmmTrackingStatus(ammId)
+	tracker, err := bot.GetAmmTrackingStatus(ammId)
 	if err != nil {
 		log.Print(err)
 		return
 	}
 
-	if isTracked == storage.PAUSE {
+	if tracker.Status == storage.PAUSE {
 		log.Printf("%s | UNPAUSED tracking", ammId)
-		bot.TrackedAmm(ammId)
+		bot.TrackedAmm(ammId, false)
 		return
 	}
 
@@ -274,13 +333,13 @@ func processSwapBaseIn(ins generators.TxInstruction, tx generators.GeyserRespons
 	}
 
 	if !signerPublicKey.Equals(config.Payer.PublicKey()) {
-		status, err := bot.GetAmmTrackingStatus(ammId)
+		tracker, err := bot.GetAmmTrackingStatus(ammId)
 		if err != nil {
 			log.Print(err)
 			return
 		}
 
-		if status != storage.TRACKED {
+		if tracker.Status != storage.TRACKED_TRIGGER_ONLY && tracker.Status != storage.TRACKED_BOTH {
 			return
 		}
 
@@ -309,7 +368,7 @@ func processSwapBaseIn(ins generators.TxInstruction, tx generators.GeyserRespons
 					Chunk:     new(big.Int).Div(amount, big.NewInt(10)),
 				})
 
-				bot.TrackedAmm(ammId)
+				bot.TrackedAmm(ammId, false)
 				log.Printf("%s | Tracked", ammId)
 			}
 			return
@@ -360,12 +419,12 @@ func processSwapBaseIn(ins generators.TxInstruction, tx generators.GeyserRespons
 			return
 		}
 
-		sellToken(pKey, chunk, minAmountOut, ammId, compute, useStakedRPCFlag)
+		go sellToken(pKey, chunk, minAmountOut, ammId, compute, useStakedRPCFlag)
 
 		compute.MicroLamports = 20000000
 		compute.Units = 38000
 		compute.Tip = 0
-		sellToken(pKey, chunk, minAmountOut, ammId, compute, true)
+		go sellToken(pKey, chunk, minAmountOut, ammId, compute, true)
 	}
 }
 
@@ -471,6 +530,59 @@ func sellToken(
 	rpc.SendTransaction(transaction)
 
 	log.Printf("%s | SELL | %s", ammId, signatures)
+}
+
+func generateInstruction(ammId *solana.PublicKey) (*solana.Transaction, error) {
+	pKey, err := liquidity.GetPoolKeys(ammId)
+	if err != nil {
+		return nil, err
+	}
+
+	blockhash, err := solana.HashFromBase58(latestBlockhash)
+	if err != nil {
+		return nil, err
+	}
+
+	options := instructions.TxOption{
+		Blockhash: blockhash,
+	}
+
+	compute := instructions.ComputeUnit{
+		MicroLamports: 0,
+		Units:         45000,
+		Tip:           0,
+	}
+
+	chunk, err := bot.GetTokenChunk(ammId)
+	if err != nil {
+		log.Printf("%s | %s", ammId, err)
+		return nil, err
+	}
+
+	if (chunk.Remaining).Uint64() == 0 {
+		log.Printf("%s | No more chunk remaining", ammId)
+		return nil, err
+	}
+
+	signatures, transaction, err := instructions.MakeSwapInstructions(
+		pKey,
+		wsolTokenAccount,
+		compute,
+		options,
+		chunk.Chunk.Uint64(),
+		50000,
+		"sell",
+		"rpc",
+	)
+
+	log.Printf("%s | BATCH SELL | %s", ammId, signatures)
+
+	if err != nil {
+		log.Printf("%s | %s", ammId, err)
+		return nil, err
+	}
+
+	return transaction, nil
 }
 
 func getOrCreateAssociatedTokenAccount() (*solana.PublicKey, error) {
