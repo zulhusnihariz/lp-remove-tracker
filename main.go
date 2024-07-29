@@ -88,7 +88,7 @@ func main() {
 	}()
 }
 
-func processResponse(id int, response generators.GeyserResponse) {
+func processResponse(response generators.GeyserResponse) {
 	// Your processing logic here
 	latestBlockhash = response.MempoolTxns.RecentBlockhash
 
@@ -370,7 +370,7 @@ func processSwapBaseIn(ins generators.TxInstruction, tx generators.GeyserRespons
 
 		compute := instructions.ComputeUnit{
 			MicroLamports: 10000000,
-			Units:         38000,
+			Units:         45000,
 			Tip:           tip,
 		}
 
@@ -387,17 +387,17 @@ func processSwapBaseIn(ins generators.TxInstruction, tx generators.GeyserRespons
 
 		// Attempt to execute sell 3x
 		sellToken(pKey, chunk, minAmountOut, ammId, compute, useStakedRPCFlag)
-		time.Sleep(5 * time.Second)
+		// time.Sleep(5 * time.Second)
 
-		compute.MicroLamports = 1000000
-		compute.Tip = 0
+		// compute.MicroLamports = 1000000
+		// compute.Tip = 0
 
-		sellToken(pKey, chunk, minAmountOut, ammId, compute, false)
-		time.Sleep(5 * time.Second)
+		// sellToken(pKey, chunk, minAmountOut, ammId, compute, false)
+		// time.Sleep(5 * time.Second)
 
-		compute.MicroLamports = 900000
+		// compute.MicroLamports = 900000
 
-		sellToken(pKey, chunk, minAmountOut, ammId, compute, false)
+		// sellToken(pKey, chunk, minAmountOut, ammId, compute, false)
 	}
 }
 
