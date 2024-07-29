@@ -5,10 +5,10 @@ import (
 	associatedtokenaccount "github.com/gagliardetto/solana-go/programs/associated-token-account"
 	computebudget "github.com/gagliardetto/solana-go/programs/compute-budget"
 	"github.com/gagliardetto/solana-go/programs/system"
-	"github.com/iqbalbaharum/go-solana-mev-bot/internal/config"
-	"github.com/iqbalbaharum/go-solana-mev-bot/internal/liquidity"
-	"github.com/iqbalbaharum/go-solana-mev-bot/internal/rpc"
-	"github.com/iqbalbaharum/go-solana-mev-bot/internal/types"
+	"github.com/iqbalbaharum/go-arbi-bot/internal/config"
+	"github.com/iqbalbaharum/go-arbi-bot/internal/liquidity"
+	"github.com/iqbalbaharum/go-arbi-bot/internal/rpc"
+	"github.com/iqbalbaharum/go-arbi-bot/internal/types"
 )
 
 type ComputeUnit struct {

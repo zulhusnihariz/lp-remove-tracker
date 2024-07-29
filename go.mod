@@ -1,4 +1,4 @@
-module github.com/iqbalbaharum/go-solana-mev-bot
+module github.com/iqbalbaharum/go-arbi-bot
 
 go 1.22.5
 

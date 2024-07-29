@@ -4,8 +4,8 @@ import (
 	"log"
 
 	"github.com/gagliardetto/solana-go"
-	"github.com/iqbalbaharum/go-solana-mev-bot/internal/adapter"
-	"github.com/iqbalbaharum/go-solana-mev-bot/internal/storage"
+	"github.com/iqbalbaharum/go-arbi-bot/internal/adapter"
+	"github.com/iqbalbaharum/go-arbi-bot/internal/storage"
 )
 
 func trackedInit() {

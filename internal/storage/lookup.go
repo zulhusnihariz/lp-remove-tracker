@@ -8,7 +8,7 @@ import (
 
 	"github.com/gagliardetto/solana-go"
 	lookup "github.com/gagliardetto/solana-go/programs/address-lookup-table"
-	"github.com/iqbalbaharum/go-solana-mev-bot/internal/adapter"
+	"github.com/iqbalbaharum/go-arbi-bot/internal/adapter"
 	"github.com/redis/go-redis/v9"
 )
 

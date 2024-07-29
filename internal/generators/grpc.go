@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/gagliardetto/solana-go"
-	"github.com/iqbalbaharum/go-solana-mev-bot/internal/types"
-	"github.com/iqbalbaharum/go-solana-mev-bot/internal/utils"
+	"github.com/iqbalbaharum/go-arbi-bot/internal/types"
+	"github.com/iqbalbaharum/go-arbi-bot/internal/utils"
 	"github.com/mr-tron/base58"
 	pb "github.com/rpcpool/yellowstone-grpc/examples/golang/proto"
 	"google.golang.org/grpc"

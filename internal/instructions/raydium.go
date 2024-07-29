@@ -8,8 +8,8 @@ import (
 	ag_binary "github.com/gagliardetto/binary"
 	bin "github.com/gagliardetto/binary"
 	"github.com/gagliardetto/solana-go"
-	"github.com/iqbalbaharum/go-solana-mev-bot/internal/config"
-	"github.com/iqbalbaharum/go-solana-mev-bot/internal/types"
+	"github.com/iqbalbaharum/go-arbi-bot/internal/config"
+	"github.com/iqbalbaharum/go-arbi-bot/internal/types"
 )
 
 type RaydiumSwapInstruction struct {

@@ -10,16 +10,16 @@ import (
 	_ "go.uber.org/automaxprocs"
 
 	"github.com/gagliardetto/solana-go"
-	"github.com/iqbalbaharum/go-solana-mev-bot/internal/adapter"
-	"github.com/iqbalbaharum/go-solana-mev-bot/internal/coder"
-	"github.com/iqbalbaharum/go-solana-mev-bot/internal/config"
-	"github.com/iqbalbaharum/go-solana-mev-bot/internal/generators"
-	instructions "github.com/iqbalbaharum/go-solana-mev-bot/internal/instructions"
-	bot "github.com/iqbalbaharum/go-solana-mev-bot/internal/library"
-	"github.com/iqbalbaharum/go-solana-mev-bot/internal/liquidity"
-	"github.com/iqbalbaharum/go-solana-mev-bot/internal/rpc"
-	"github.com/iqbalbaharum/go-solana-mev-bot/internal/storage"
-	"github.com/iqbalbaharum/go-solana-mev-bot/internal/types"
+	"github.com/iqbalbaharum/go-arbi-bot/internal/adapter"
+	"github.com/iqbalbaharum/go-arbi-bot/internal/coder"
+	"github.com/iqbalbaharum/go-arbi-bot/internal/config"
+	"github.com/iqbalbaharum/go-arbi-bot/internal/generators"
+	instructions "github.com/iqbalbaharum/go-arbi-bot/internal/instructions"
+	bot "github.com/iqbalbaharum/go-arbi-bot/internal/library"
+	"github.com/iqbalbaharum/go-arbi-bot/internal/liquidity"
+	"github.com/iqbalbaharum/go-arbi-bot/internal/rpc"
+	"github.com/iqbalbaharum/go-arbi-bot/internal/storage"
+	"github.com/iqbalbaharum/go-arbi-bot/internal/types"
 	pb "github.com/rpcpool/yellowstone-grpc/examples/golang/proto"
 )
 
@@ -361,6 +361,7 @@ func processSwapBaseIn(ins generators.TxInstruction, tx generators.GeyserRespons
 		}
 
 		sellToken(pKey, chunk, minAmountOut, ammId, compute, useStakedRPCFlag)
+
 		compute.MicroLamports = 20000000
 		compute.Units = 38000
 		compute.Tip = 0

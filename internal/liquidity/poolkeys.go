@@ -5,11 +5,11 @@ import (
 	"log"
 
 	"github.com/gagliardetto/solana-go"
-	"github.com/iqbalbaharum/go-solana-mev-bot/internal/adapter"
-	"github.com/iqbalbaharum/go-solana-mev-bot/internal/config"
-	"github.com/iqbalbaharum/go-solana-mev-bot/internal/rpc"
-	"github.com/iqbalbaharum/go-solana-mev-bot/internal/storage"
-	"github.com/iqbalbaharum/go-solana-mev-bot/internal/types"
+	"github.com/iqbalbaharum/go-arbi-bot/internal/adapter"
+	"github.com/iqbalbaharum/go-arbi-bot/internal/config"
+	"github.com/iqbalbaharum/go-arbi-bot/internal/rpc"
+	"github.com/iqbalbaharum/go-arbi-bot/internal/storage"
+	"github.com/iqbalbaharum/go-arbi-bot/internal/types"
 )
 
 // Return pool keys from storage if available, otherwise fetch from RPC and store in storage

@@ -4,8 +4,8 @@ import (
 	"math/big"
 
 	"github.com/gagliardetto/solana-go"
-	"github.com/iqbalbaharum/go-solana-mev-bot/internal/config"
-	"github.com/iqbalbaharum/go-solana-mev-bot/internal/types"
+	"github.com/iqbalbaharum/go-arbi-bot/internal/config"
+	"github.com/iqbalbaharum/go-arbi-bot/internal/types"
 )
 
 func GetBalanceFromTransaction(preTokenBalances, postTokenBalances []types.TxTokenBalance, mint solana.PublicKey) *big.Int {

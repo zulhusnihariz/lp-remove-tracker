@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/gagliardetto/solana-go"
-	"github.com/iqbalbaharum/go-solana-mev-bot/internal/config"
+	"github.com/iqbalbaharum/go-arbi-bot/internal/config"
 	"github.com/mr-tron/base58"
 )
 

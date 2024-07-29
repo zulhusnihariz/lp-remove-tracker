@@ -13,7 +13,7 @@ import (
 	"github.com/gagliardetto/solana-go"
 	addresslookuptable "github.com/gagliardetto/solana-go/programs/address-lookup-table"
 	"github.com/gagliardetto/solana-go/rpc"
-	"github.com/iqbalbaharum/go-solana-mev-bot/internal/coder"
+	"github.com/iqbalbaharum/go-arbi-bot/internal/coder"
 )
 
 type AccountInfo struct {

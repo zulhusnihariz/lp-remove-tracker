@@ -5,10 +5,10 @@ import (
 
 	"github.com/gagliardetto/solana-go"
 	addresslookuptable "github.com/gagliardetto/solana-go/programs/address-lookup-table"
-	"github.com/iqbalbaharum/go-solana-mev-bot/internal/adapter"
-	"github.com/iqbalbaharum/go-solana-mev-bot/internal/generators"
-	"github.com/iqbalbaharum/go-solana-mev-bot/internal/rpc"
-	"github.com/iqbalbaharum/go-solana-mev-bot/internal/storage"
+	"github.com/iqbalbaharum/go-arbi-bot/internal/adapter"
+	"github.com/iqbalbaharum/go-arbi-bot/internal/generators"
+	"github.com/iqbalbaharum/go-arbi-bot/internal/rpc"
+	"github.com/iqbalbaharum/go-arbi-bot/internal/storage"
 )
 
 type LookupIndex struct {
