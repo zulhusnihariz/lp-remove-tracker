@@ -71,7 +71,7 @@ func main() {
 	for i := 0; i < numCPU; i++ {
 		go func() {
 			for response := range txChannel {
-				processResponse(i, response)
+				processResponse(response)
 			}
 		}()
 	}
