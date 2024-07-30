@@ -385,46 +385,49 @@ func processSwapBaseIn(ins generators.TxInstruction, tx generators.GeyserRespons
 		return
 	}
 
+	// TODO: Temporarily disable this feature
+
 	// Only proceed if the amount is greater than 0.011 SOL and amount of SOL is a negative number (represent buy action)
 	// log.Printf("%s | %d | %s | %s", ammId, amount.Sign(), amountSol, tx.MempoolTxns.Signature)
-	if amount.Sign() == -1 && amountSol.Cmp(big.NewInt(1100000)) == 1 {
-		log.Printf("%s | Potential entry %d SOL (Slot %d) | %s", ammId, amountSol, tx.MempoolTxns.Slot, tx.MempoolTxns.Signature)
+	// if amount.Sign() == -1 && amountSol.Cmp(big.NewInt(1100000)) == 1 {
 
-		var tip uint64
-		var minAmountOut uint64
-		var useStakedRPCFlag bool = true
-		if amountSol.Uint64() > 200000000 {
-			tip = 200000000
-			minAmountOut = 200000000
-		} else {
-			tip = 10000000
-			minAmountOut = 10000000
-		}
+	// 	log.Printf("%s | Potential entry %d SOL (Slot %d) | %s", ammId, amountSol, tx.MempoolTxns.Slot, tx.MempoolTxns.Signature)
 
-		compute := instructions.ComputeUnit{
-			MicroLamports: 10000000,
-			Units:         45000,
-			Tip:           tip,
-		}
+	// 	var tip uint64
+	// 	var minAmountOut uint64
+	// 	var useStakedRPCFlag bool = true
+	// 	if amountSol.Uint64() > 200000000 {
+	// 		tip = 200000000
+	// 		minAmountOut = 200000000
+	// 	} else {
+	// 		tip = 10000000
+	// 		minAmountOut = 10000000
+	// 	}
 
-		chunk, err := bot.GetTokenChunk(ammId)
-		if err != nil {
-			log.Printf("%s | %s", ammId, err)
-			return
-		}
+	// 	compute := instructions.ComputeUnit{
+	// 		MicroLamports: 10000000,
+	// 		Units:         45000,
+	// 		Tip:           tip,
+	// 	}
 
-		if (chunk.Remaining).Uint64() == 0 {
-			log.Printf("%s | No more chunk remaining", ammId)
-			return
-		}
+	// 	chunk, err := bot.GetTokenChunk(ammId)
+	// 	if err != nil {
+	// 		log.Printf("%s | %s", ammId, err)
+	// 		return
+	// 	}
 
-		go sellToken(pKey, chunk, minAmountOut, ammId, compute, useStakedRPCFlag)
+	// 	if (chunk.Remaining).Uint64() == 0 {
+	// 		log.Printf("%s | No more chunk remaining", ammId)
+	// 		return
+	// 	}
 
-		compute.MicroLamports = 10000000
-		compute.Units = 38000
-		compute.Tip = 0
-		go sellToken(pKey, chunk, minAmountOut, ammId, compute, true)
-	}
+	// 	go sellToken(pKey, chunk, minAmountOut, ammId, compute, useStakedRPCFlag)
+
+	// 	compute.MicroLamports = 10000000
+	// 	compute.Units = 38000
+	// 	compute.Tip = 0
+	// 	go sellToken(pKey, chunk, minAmountOut, ammId, compute, true)
+	// }
 }
 
 func buyToken(
