@@ -281,7 +281,7 @@ func processWithdraw(ins generators.TxInstruction, tx generators.GeyserResponse)
 		Tip:           0,
 	}
 
-	buyToken(pKey, 2000000, 0, ammId, compute, false)
+	buyToken(pKey, 200000, 0, ammId, compute, false)
 }
 
 /**
