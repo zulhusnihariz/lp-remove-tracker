@@ -118,7 +118,6 @@ func runBatchTransactionProcess() {
 		return
 	}
 
-	log.Print("Running batch transaction process")
 	trackedAMMs, err := bot.GetAllTrackedAmm()
 	if err != nil {
 		log.Printf("Error fetching tracked AMMs: %v", err)
@@ -143,7 +142,6 @@ func runBatchTransactionProcess() {
 	}
 
 	if len(transactions) > 0 {
-		log.Print("Sending batch transactions")
 		if err := rpc.SendBatchTransactions(transactions); err != nil {
 			log.Printf("Error sending batch transactions: %v", err)
 		}
