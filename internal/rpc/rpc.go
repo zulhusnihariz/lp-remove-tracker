@@ -151,6 +151,11 @@ func SendTransaction(transaction *solana.Transaction) error {
 func SendBatchTransactions(transactions []*solana.Transaction) error {
 
 	for _, tx := range transactions {
+
+		if tx == nil {
+			continue
+		}
+
 		msg, err := tx.MarshalBinary()
 		if err != nil {
 			return err
