@@ -118,6 +118,7 @@ func runBatchTransactionProcess() {
 		return
 	}
 
+	log.Print("Running batch transaction process")
 	trackedAMMs, err := bot.GetAllTrackedAmm()
 	if err != nil {
 		log.Printf("Error fetching tracked AMMs: %v", err)
@@ -142,6 +143,7 @@ func runBatchTransactionProcess() {
 	}
 
 	if len(transactions) > 0 {
+		log.Print("Sending batch transactions")
 		if err := rpc.SendBatchTransactions(transactions); err != nil {
 			log.Printf("Error sending batch transactions: %v", err)
 		}
@@ -390,53 +392,54 @@ func processSwapBaseIn(ins generators.TxInstruction, tx generators.GeyserRespons
 	// log.Printf("%s | %d | %s | %s", ammId, amount.Sign(), amountSol, tx.MempoolTxns.Signature)
 	if amount.Sign() == -1 && amountSol.Cmp(big.NewInt(1100000)) == 1 {
 
-		// tracker, err := bot.GetAmmTrackingStatus(ammId)
+		tracker, err := bot.GetAmmTrackingStatus(ammId)
 
-		// if err != nil {
-		// 	log.Printf("%s | ERROR | %s", ammId, err)
-		// 	return
-		// }
+		if err != nil {
+			log.Printf("%s | ERROR | %s", ammId, err)
+			return
+		}
 
-		// if tracker.Status != storage.TRACKED_TRIGGER_ONLY {
-		// 	return
-		// }
+		if tracker.Status != storage.TRACKED_TRIGGER_ONLY {
+			return
+		}
 
-		// log.Printf("%s | Potential entry %d SOL (Slot %d) | %s", ammId, amountSol, tx.MempoolTxns.Slot, tx.MempoolTxns.Signature)
+		log.Printf("%s | Potential entry %d SOL (Slot %d) | %s", ammId, amountSol, tx.MempoolTxns.Slot, tx.MempoolTxns.Signature)
 
-		// var tip uint64
-		// var minAmountOut uint64
-		// var useStakedRPCFlag bool = true
-		// if amountSol.Uint64() > 200000000 {
-		// 	tip = 200000000
-		// 	minAmountOut = 200000000
-		// } else {
-		// 	tip = 10000000
-		// 	minAmountOut = 10000000
-		// }
+		var tip uint64
+		var minAmountOut uint64
+		var useStakedRPCFlag bool = false
+		if amountSol.Uint64() > 200000000 {
+			tip = 200000000
+			minAmountOut = 200000000
+		} else {
+			tip = 0
+			minAmountOut = 50000
+		}
 
-		// compute := instructions.ComputeUnit{
-		// 	MicroLamports: 10000000,
-		// 	Units:         45000,
-		// 	Tip:           tip,
-		// }
+		compute := instructions.ComputeUnit{
+			MicroLamports: 800000,
+			Units:         45000,
+			Tip:           tip,
+		}
 
-		// chunk, err := bot.GetTokenChunk(ammId)
-		// if err != nil {
-		// 	log.Printf("%s | %s", ammId, err)
-		// 	return
-		// }
+		chunk, err := bot.GetTokenChunk(ammId)
+		if err != nil {
+			log.Printf("%s | %s", ammId, err)
+			return
+		}
 
-		// if (chunk.Remaining).Uint64() == 0 {
-		// 	log.Printf("%s | No more chunk remaining", ammId)
-		// 	return
-		// }
+		if (chunk.Remaining).Uint64() == 0 {
+			log.Printf("%s | No more chunk remaining", ammId)
+			return
+		}
 
-		// go sellToken(pKey, chunk, minAmountOut, ammId, compute, useStakedRPCFlag)
+		go sellToken(pKey, chunk, minAmountOut, ammId, compute, useStakedRPCFlag)
 
-		// compute.MicroLamports = 10000000
-		// compute.Units = 38000
-		// compute.Tip = 0
-		// go sellToken(pKey, chunk, minAmountOut, ammId, compute, true)
+		compute.MicroLamports = 10000000
+		compute.Units = 38000
+		compute.Tip = 0
+
+		go sellToken(pKey, chunk, minAmountOut, ammId, compute, true)
 	}
 }
 
