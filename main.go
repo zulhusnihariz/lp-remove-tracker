@@ -281,7 +281,7 @@ func processWithdraw(ins generators.TxInstruction, tx generators.GeyserResponse)
 		Tip:           0,
 	}
 
-	buyToken(pKey, 1000000, 0, ammId, compute, false)
+	buyToken(pKey, 2000000, 0, ammId, compute, false)
 }
 
 /**
@@ -364,7 +364,7 @@ func processSwapBaseIn(ins generators.TxInstruction, tx generators.GeyserRespons
 				bot.SetTokenChunk(ammId, types.TokenChunk{
 					Total:     amount,
 					Remaining: amount,
-					Chunk:     new(big.Int).Div(amount, big.NewInt(10)),
+					Chunk:     new(big.Int).Div(amount, big.NewInt(20)),
 				})
 
 				bot.TrackedAmm(ammId, false)
