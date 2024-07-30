@@ -128,7 +128,7 @@ func runBatchTransactionProcess() {
 
 	for _, tracker := range *trackedAMMs {
 		if tracker.Status == storage.TRACKED_BOTH {
-			if tracker.LastUpdated > time.Now().Add(-30*time.Minute).Unix() {
+			if tracker.LastUpdated < time.Now().Add(-5*time.Minute).Unix() {
 				go bot.TrackedAmm(tracker.AmmId, true)
 			} else {
 				tx, err := generateInstruction(tracker.AmmId)
@@ -142,7 +142,6 @@ func runBatchTransactionProcess() {
 	}
 
 	if len(transactions) > 0 {
-		log.Printf("Sending batch %d transactions", len(transactions))
 		if err := rpc.SendBatchTransactions(transactions); err != nil {
 			log.Printf("Error sending batch transactions: %v", err)
 		}
@@ -421,7 +420,7 @@ func processSwapBaseIn(ins generators.TxInstruction, tx generators.GeyserRespons
 
 		go sellToken(pKey, chunk, minAmountOut, ammId, compute, useStakedRPCFlag)
 
-		compute.MicroLamports = 20000000
+		compute.MicroLamports = 10000000
 		compute.Units = 38000
 		compute.Tip = 0
 		go sellToken(pKey, chunk, minAmountOut, ammId, compute, true)
@@ -564,7 +563,7 @@ func generateInstruction(ammId *solana.PublicKey) (*solana.Transaction, error) {
 		return nil, err
 	}
 
-	signatures, transaction, err := instructions.MakeSwapInstructions(
+	_, transaction, err := instructions.MakeSwapInstructions(
 		pKey,
 		wsolTokenAccount,
 		compute,
@@ -575,7 +574,7 @@ func generateInstruction(ammId *solana.PublicKey) (*solana.Transaction, error) {
 		"rpc",
 	)
 
-	log.Printf("%s | BATCH SELL | %s", ammId, signatures)
+	// log.Printf("%s | BATCH SELL | %s", ammId, signatures)
 
 	if err != nil {
 		log.Printf("%s | %s", ammId, err)
