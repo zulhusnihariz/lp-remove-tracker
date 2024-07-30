@@ -102,7 +102,7 @@ func main() {
 }
 
 func runBatchTransactionThread() {
-	ticker := time.NewTicker(1 * time.Second)
+	ticker := time.NewTicker(300 * time.Millisecond)
 	defer ticker.Stop()
 
 	for {
