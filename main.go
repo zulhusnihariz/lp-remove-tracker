@@ -562,6 +562,7 @@ func generateInstruction(ammId *solana.PublicKey) (*solana.Transaction, error) {
 
 	if (chunk.Remaining).Uint64() == 0 {
 		log.Printf("%s | No more juice", ammId)
+		bot.UntrackedAmm(ammId)
 		return nil, err
 	}
 
