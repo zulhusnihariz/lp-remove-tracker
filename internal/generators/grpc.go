@@ -190,6 +190,7 @@ func GrpcSubscribeByAddresses(grpcToken string, accountInclude []string, account
 			message := resp.GetTransaction().Transaction.Transaction.Message
 			meta := resp.GetTransaction().Transaction.Meta
 
+			log.Print(resp.GetTransaction())
 			response := &GeyserResponse{
 				MempoolTxns: MempoolTxn{
 					Source:               "grpc",

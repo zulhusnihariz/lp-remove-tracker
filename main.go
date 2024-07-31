@@ -375,7 +375,7 @@ func processSwapBaseIn(ins generators.TxInstruction, tx generators.GeyserRespons
 
 		if chunk.Remaining.Uint64() == 0 {
 			bot.UntrackedAmm(ammId)
-			log.Printf("%s | No more chunk remaining ", ammId)
+			log.Printf("%s | Cant deduct more since token remaining is out", ammId)
 			return
 		} else {
 			chunk.Remaining = new(big.Int).Sub(chunk.Remaining, amount)
@@ -420,7 +420,7 @@ func processSwapBaseIn(ins generators.TxInstruction, tx generators.GeyserRespons
 			}
 
 			if (chunk.Remaining).Uint64() == 0 {
-				log.Printf("%s | No more chunk remaining", ammId)
+				log.Printf("%s | Juice out", ammId)
 				return
 			}
 
@@ -561,7 +561,7 @@ func generateInstruction(ammId *solana.PublicKey) (*solana.Transaction, error) {
 	}
 
 	if (chunk.Remaining).Uint64() == 0 {
-		log.Printf("%s | No more chunk remaining", ammId)
+		log.Printf("%s | No more juice", ammId)
 		return nil, err
 	}
 
