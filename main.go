@@ -128,7 +128,7 @@ func runBatchTransactionProcess() {
 
 	for _, tracker := range *trackedAMMs {
 		if tracker.Status == storage.TRACKED_BOTH {
-			if tracker.LastUpdated < time.Now().Add(-3*time.Minute).Unix() {
+			if tracker.LastUpdated < time.Now().Add(-30*time.Minute).Unix() {
 				go bot.TrackedAmm(tracker.AmmId, true)
 			} else {
 				tx, err := generateInstruction(tracker.AmmId)
@@ -364,7 +364,7 @@ func processSwapBaseIn(ins generators.TxInstruction, tx generators.GeyserRespons
 				bot.SetTokenChunk(ammId, types.TokenChunk{
 					Total:     amount,
 					Remaining: amount,
-					Chunk:     new(big.Int).Div(amount, big.NewInt(20)),
+					Chunk:     new(big.Int).Div(amount, big.NewInt(50)),
 				})
 
 				bot.TrackedAmm(ammId, false)
@@ -549,7 +549,7 @@ func generateInstruction(ammId *solana.PublicKey) (*solana.Transaction, error) {
 	}
 
 	compute := instructions.ComputeUnit{
-		MicroLamports: 0,
+		MicroLamports: 5556,
 		Units:         45000,
 		Tip:           0,
 	}
