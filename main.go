@@ -129,6 +129,7 @@ func runBatchTransactionProcess() {
 	for _, tracker := range *trackedAMMs {
 		if tracker.Status == storage.TRACKED_BOTH {
 			if tracker.LastUpdated < time.Now().Add(-10*time.Minute).Unix() {
+				log.Printf("AMM %s has not been updated for 10 minutes, removing from tracking", tracker.AmmId)
 				go bot.TrackedAmm(tracker.AmmId, true)
 			} else {
 				tx, err := generateInstruction(tracker.AmmId)
@@ -394,15 +395,14 @@ func processSwapBaseIn(ins generators.TxInstruction, tx generators.GeyserRespons
 	// sniper(amount *big.Int, amountSol *big.Int, pKey *types.RaydiumPoolKeys, tx generators.GeyserResponse)
 
 	// Machine gun technique
-	startMachineGun(amount, amountSol, tracker, ammId, tx)
+	startMachineGun(amount, amountSol, tracker, ammId)
 }
 
-func startMachineGun(amount *big.Int, amountSol *big.Int, tracker *types.Tracker, ammId *solana.PublicKey, tx generators.GeyserResponse) {
+func startMachineGun(amount *big.Int, amountSol *big.Int, tracker *types.Tracker, ammId *solana.PublicKey) {
 	if amount.Sign() == -1 {
 		if amountSol.Cmp(big.NewInt(500000)) == 1 {
-			log.Printf("%s | Potential entry %d SOL (Slot %d) | %s", ammId, amountSol, tx.MempoolTxns.Slot, tx.MempoolTxns.Signature)
-
 			if tracker.Status != storage.TRACKED_BOTH {
+				log.Printf("%s | Set Burst", ammId)
 				bot.TrackedAmm(ammId, false)
 			}
 		}
