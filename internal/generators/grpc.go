@@ -5,6 +5,7 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log"
 	"time"
@@ -56,6 +57,7 @@ type MempoolTxn struct {
 	PostTokenBalances    []types.TxTokenBalance `json:"postTokenBalances"`
 	ComputeUnitsConsumed uint64                 `json:"computeUnitsConsumed"`
 	Slot                 uint64                 `json:"slot"`
+	Error                string                 `json:"error"`
 }
 
 type TxInstruction struct {
@@ -190,6 +192,13 @@ func GrpcSubscribeByAddresses(grpcToken string, accountInclude []string, account
 			message := resp.GetTransaction().Transaction.Transaction.Message
 			meta := resp.GetTransaction().Transaction.Meta
 
+			var errorString string
+
+			if meta.Err != nil {
+				relevantByte := meta.Err.Err[9]
+				errorString = fmt.Sprintf("0x%x", relevantByte)
+			}
+
 			response := &GeyserResponse{
 				MempoolTxns: MempoolTxn{
 					Source:               "grpc",
@@ -202,6 +211,7 @@ func GrpcSubscribeByAddresses(grpcToken string, accountInclude []string, account
 					PostTokenBalances:    convertTokenBalances(meta.PostTokenBalances),
 					ComputeUnitsConsumed: *resp.GetTransaction().Transaction.GetMeta().ComputeUnitsConsumed,
 					Slot:                 resp.GetTransaction().Slot,
+					Error:                errorString,
 				},
 			}
 
@@ -266,8 +276,6 @@ func GetBlockhash() (solana.Hash, error) {
 	block, err := client.GetLatestBlockhash(ctx, &pb.GetLatestBlockhashRequest{
 		Commitment: pb.CommitmentLevel_CONFIRMED.Enum(),
 	})
-
-	log.Print(err)
 
 	if err != nil {
 		return solana.Hash{}, err

@@ -128,7 +128,7 @@ func runBatchTransactionProcess() {
 
 	for _, tracker := range *trackedAMMs {
 		if tracker.Status == storage.TRACKED_BOTH {
-			if tracker.LastUpdated < time.Now().Add(-30*time.Minute).Unix() {
+			if tracker.LastUpdated < time.Now().Add(-10*time.Minute).Unix() {
 				go bot.TrackedAmm(tracker.AmmId, true)
 			} else {
 				tx, err := generateInstruction(tracker.AmmId)
@@ -331,8 +331,10 @@ func processSwapBaseIn(ins generators.TxInstruction, tx generators.GeyserRespons
 		return
 	}
 
+	tracker, err := bot.GetAmmTrackingStatus(ammId)
+
 	if !signerPublicKey.Equals(config.Payer.PublicKey()) {
-		tracker, err := bot.GetAmmTrackingStatus(ammId)
+
 		if err != nil {
 			log.Print(err)
 			return
@@ -367,7 +369,7 @@ func processSwapBaseIn(ins generators.TxInstruction, tx generators.GeyserRespons
 					Chunk:     new(big.Int).Div(amount, big.NewInt(50)),
 				})
 
-				bot.TrackedAmm(ammId, false)
+				bot.TrackedAmm(ammId, true)
 				log.Printf("%s | Tracked", ammId)
 			}
 			return
@@ -378,8 +380,10 @@ func processSwapBaseIn(ins generators.TxInstruction, tx generators.GeyserRespons
 			log.Printf("%s | Cant deduct more since token remaining is out", ammId)
 			return
 		} else {
-			chunk.Remaining = new(big.Int).Sub(chunk.Remaining, amount)
-			bot.SetTokenChunk(ammId, chunk)
+			if tx.MempoolTxns.Error == "" {
+				chunk.Remaining = new(big.Int).Sub(chunk.Remaining, amount)
+				bot.SetTokenChunk(ammId, chunk)
+			}
 		}
 
 		return
@@ -387,14 +391,28 @@ func processSwapBaseIn(ins generators.TxInstruction, tx generators.GeyserRespons
 
 	// Only proceed if the amount is greater than 0.011 SOL and amount of SOL is a negative number (represent buy action)
 	// log.Printf("%s | %d | %s | %s", ammId, amount.Sign(), amountSol, tx.MempoolTxns.Signature)
+	// sniper(amount *big.Int, amountSol *big.Int, pKey *types.RaydiumPoolKeys, tx generators.GeyserResponse)
+
+	// Machine gun technique
+	startMachineGun(amount, amountSol, tracker, ammId, tx)
+}
+
+func startMachineGun(amount *big.Int, amountSol *big.Int, tracker *types.Tracker, ammId *solana.PublicKey, tx generators.GeyserResponse) {
 	if amount.Sign() == -1 {
-
-		if amountSol.Cmp(big.NewInt(100000)) == 1 {
-			bot.TrackedAmm(ammId, false)
-		}
-
-		if amountSol.Cmp(big.NewInt(1100000)) == 1 {
+		if amountSol.Cmp(big.NewInt(500000)) == 1 {
 			log.Printf("%s | Potential entry %d SOL (Slot %d) | %s", ammId, amountSol, tx.MempoolTxns.Slot, tx.MempoolTxns.Signature)
+
+			if tracker.Status != storage.TRACKED_BOTH {
+				bot.TrackedAmm(ammId, false)
+			}
+		}
+	}
+}
+
+func sniper(amount *big.Int, amountSol *big.Int, pKey *types.RaydiumPoolKeys, tx generators.GeyserResponse) {
+	if amount.Sign() == -1 {
+		if amountSol.Cmp(big.NewInt(1100000)) == 1 {
+			log.Printf("%s | Potential entry %d SOL (Slot %d) | %s", pKey.ID, amountSol, tx.MempoolTxns.Slot, tx.MempoolTxns.Signature)
 
 			var tip uint64
 			var minAmountOut uint64
@@ -413,18 +431,18 @@ func processSwapBaseIn(ins generators.TxInstruction, tx generators.GeyserRespons
 				Tip:           tip,
 			}
 
-			chunk, err := bot.GetTokenChunk(ammId)
+			chunk, err := bot.GetTokenChunk(&pKey.ID)
 			if err != nil {
-				log.Printf("%s | %s", ammId, err)
+				log.Printf("%s | %s", pKey.ID, err)
 				return
 			}
 
 			if (chunk.Remaining).Uint64() == 0 {
-				log.Printf("%s | Juice out", ammId)
+				log.Printf("%s | Juice out", pKey.ID)
 				return
 			}
 
-			go sellToken(pKey, chunk, minAmountOut, ammId, compute, useStakedRPCFlag)
+			go sellToken(pKey, chunk, minAmountOut, &pKey.ID, compute, useStakedRPCFlag)
 		}
 	}
 }
