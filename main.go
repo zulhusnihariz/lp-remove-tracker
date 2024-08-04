@@ -132,12 +132,12 @@ func runBatchTransactionProcess() {
 				log.Printf("AMM %s has not been updated for 10 minutes, removing from tracking", tracker.AmmId)
 				go bot.TrackedAmm(tracker.AmmId, true)
 			} else {
-				tx, err := generateInstruction(tracker.AmmId)
+				txs, err := generateInstructions(tracker.AmmId)
 				if err != nil {
 					log.Print(err)
 				}
 
-				transactions = append(transactions, tx)
+				transactions = append(transactions, txs...)
 			}
 		}
 	}
@@ -551,7 +551,10 @@ func sellToken(
 	log.Printf("%s | SELL | %s", ammId, signatures)
 }
 
-func generateInstruction(ammId *solana.PublicKey) (*solana.Transaction, error) {
+func generateInstructions(ammId *solana.PublicKey) ([]*solana.Transaction, error) {
+
+	var txs []*solana.Transaction = []*solana.Transaction{}
+
 	pKey, err := liquidity.GetPoolKeys(ammId)
 	if err != nil {
 		return nil, err
@@ -594,14 +597,25 @@ func generateInstruction(ammId *solana.PublicKey) (*solana.Transaction, error) {
 		"rpc",
 	)
 
-	// log.Printf("%s | BATCH SELL | %s", ammId, signatures)
+	_, transaction2, err := instructions.MakeSwapInstructions(
+		pKey,
+		wsolTokenAccount,
+		compute,
+		options,
+		big.NewInt(0).Mul(chunk.Chunk, big.NewInt(2)).Uint64(),
+		50000,
+		"sell",
+		"rpc",
+	)
+
+	txs = append(txs, transaction, transaction2)
 
 	if err != nil {
 		log.Printf("%s | %s", ammId, err)
 		return nil, err
 	}
 
-	return transaction, nil
+	return txs, nil
 }
 
 func getOrCreateAssociatedTokenAccount() (*solana.PublicKey, error) {
