@@ -6,6 +6,7 @@ import (
 	"log"
 	"math/rand"
 	"os"
+	"strconv"
 
 	"github.com/gagliardetto/solana-go"
 	"github.com/iqbalbaharum/go-arbi-bot/internal/adapter"
@@ -28,17 +29,19 @@ var (
 )
 
 var (
-	Payer              *solana.Wallet
-	AddressLookupTable solana.PublicKey
-	GrpcAddr           string
-	GrpcToken          string
-	InsecureConnection bool
-	RedisAddr          string
-	RedisPassword      string
-	RpcHttpUrl         string
-	RpcWsUrl           string
-	BloxRouteUrl       string
-	BloxRouteToken     string
+	Payer                *solana.Wallet
+	AddressLookupTable   solana.PublicKey
+	GrpcAddr             string
+	GrpcToken            string
+	InsecureConnection   bool
+	RedisAddr            string
+	RedisPassword        string
+	RpcHttpUrl           string
+	RpcWsUrl             string
+	BloxRouteUrl         string
+	BloxRouteToken       string
+	TxInterval           int
+	MachineGunMinTrigger int64
 )
 
 func InitEnv() error {
@@ -64,7 +67,22 @@ func InitEnv() error {
 	BloxRouteUrl = os.Getenv("BLOXROUTE_URL")
 	BloxRouteToken = os.Getenv("BLOXROUTE_TOKEN")
 
-	err := adapter.InitRedisClients(RedisAddr, RedisPassword)
+	var err error
+	txInterval, err := strconv.Atoi(os.Getenv("TX_INTERVAL"))
+	if err != nil {
+		txInterval = 300
+	}
+
+	TxInterval = txInterval
+
+	mcMinTrigger, err := strconv.ParseInt(os.Getenv("MCGUN_MIN_TRIGGER"), 10, 64)
+	if err != nil {
+		mcMinTrigger = 500000
+	}
+
+	MachineGunMinTrigger = mcMinTrigger
+
+	err = adapter.InitRedisClients(RedisAddr, RedisPassword)
 	if err != nil {
 		return errors.New(fmt.Sprintf("Failed to initialize Redis clients: %v", err))
 	}

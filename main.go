@@ -102,7 +102,7 @@ func main() {
 }
 
 func runBatchTransactionThread() {
-	ticker := time.NewTicker(300 * time.Millisecond)
+	ticker := time.NewTicker(time.Duration(config.TxInterval) * time.Millisecond)
 	defer ticker.Stop()
 
 	for {
@@ -129,7 +129,7 @@ func runBatchTransactionProcess() {
 	for _, tracker := range *trackedAMMs {
 		if tracker.Status == storage.TRACKED_BOTH {
 			if tracker.LastUpdated < time.Now().Add(-10*time.Minute).Unix() {
-				log.Printf("AMM %s has not been updated for 10 minutes, removing from tracking", tracker.AmmId)
+				log.Printf("%s| Remove from tracking", tracker.AmmId)
 				go bot.TrackedAmm(tracker.AmmId, true)
 			} else {
 				txs, err := generateInstructions(tracker.AmmId)
@@ -400,7 +400,7 @@ func processSwapBaseIn(ins generators.TxInstruction, tx generators.GeyserRespons
 
 func startMachineGun(amount *big.Int, amountSol *big.Int, tracker *types.Tracker, ammId *solana.PublicKey) {
 	if amount.Sign() == -1 {
-		if amountSol.Cmp(big.NewInt(500000)) == 1 {
+		if amountSol.Cmp(big.NewInt(config.MachineGunMinTrigger)) == 1 {
 			if tracker.Status != storage.TRACKED_BOTH {
 				log.Printf("%s | Set Burst", ammId)
 				bot.TrackedAmm(ammId, false)
