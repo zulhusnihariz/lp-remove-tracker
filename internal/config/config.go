@@ -41,6 +41,7 @@ var (
 	BloxRouteUrl         string
 	BloxRouteToken       string
 	TxInterval           int
+	ChunkSplitter        int64
 	MachineGunMinTrigger int64
 )
 
@@ -81,6 +82,13 @@ func InitEnv() error {
 	}
 
 	MachineGunMinTrigger = mcMinTrigger
+
+	chunk, err := strconv.ParseInt(os.Getenv("CHUNK_SPLITTER"), 10, 64)
+	if err != nil {
+		chunk = 50
+	}
+
+	ChunkSplitter = chunk
 
 	err = adapter.InitRedisClients(RedisAddr, RedisPassword)
 	if err != nil {

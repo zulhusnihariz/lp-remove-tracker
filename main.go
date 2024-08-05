@@ -367,7 +367,7 @@ func processSwapBaseIn(ins generators.TxInstruction, tx generators.GeyserRespons
 				bot.SetTokenChunk(ammId, types.TokenChunk{
 					Total:     amount,
 					Remaining: amount,
-					Chunk:     new(big.Int).Div(amount, big.NewInt(50)),
+					Chunk:     new(big.Int).Div(amount, big.NewInt(config.ChunkSplitter)),
 				})
 
 				bot.TrackedAmm(ammId, true)
