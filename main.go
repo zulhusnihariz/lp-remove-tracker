@@ -370,7 +370,7 @@ func processSwapBaseIn(ins generators.TxInstruction, tx generators.GeyserRespons
 					Chunk:     new(big.Int).Div(amount, big.NewInt(config.ChunkSplitter)),
 				})
 
-				bot.TrackedAmm(ammId, true)
+				bot.TrackedAmm(ammId, false)
 				log.Printf("%s | Tracked", ammId)
 			}
 			return
