@@ -93,7 +93,7 @@ func InitEnv() error {
 
 	delay, err := strconv.ParseInt(os.Getenv("BUY_DELAY"), 10, 64)
 	if err != nil {
-		chunk = 50
+		chunk = 3
 	}
 
 	BuyDelay = delay
