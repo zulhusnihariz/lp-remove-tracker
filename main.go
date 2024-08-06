@@ -251,7 +251,7 @@ func processWithdraw(ins generators.TxInstruction, tx generators.GeyserResponse)
 		return
 	}
 
-	time.Sleep(3 * time.Second)
+	time.Sleep(time.Duration(config.BuyDelay) * time.Second)
 
 	reserve, err := liquidity.GetPoolSolBalance(pKey)
 	if err != nil {

@@ -43,6 +43,7 @@ var (
 	TxInterval           int
 	ChunkSplitter        int64
 	MachineGunMinTrigger int64
+	BuyDelay             int64
 )
 
 func InitEnv() error {
@@ -89,6 +90,13 @@ func InitEnv() error {
 	}
 
 	ChunkSplitter = chunk
+
+	delay, err := strconv.ParseInt(os.Getenv("BUY_DELAY"), 10, 64)
+	if err != nil {
+		chunk = 50
+	}
+
+	BuyDelay = delay
 
 	err = adapter.InitRedisClients(RedisAddr, RedisPassword)
 	if err != nil {
