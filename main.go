@@ -282,7 +282,7 @@ func processWithdraw(ins generators.TxInstruction, tx generators.GeyserResponse)
 		Tip:           0,
 	}
 
-	buyToken(pKey, 200000, 0, ammId, compute, false)
+	buyToken(pKey, 20000, 0, ammId, compute, false)
 }
 
 /**
@@ -442,7 +442,7 @@ func sniper(amount *big.Int, amountSol *big.Int, pKey *types.RaydiumPoolKeys, tx
 				return
 			}
 
-			go sellToken(pKey, chunk, minAmountOut, &pKey.ID, compute, useStakedRPCFlag)
+			go sellToken(pKey, chunk, minAmountOut, &pKey.ID, compute, useStakedRPCFlag, config.SELL_METHOD)
 		}
 	}
 }
@@ -505,7 +505,8 @@ func sellToken(
 	minAmountOut uint64,
 	ammId *solana.PublicKey,
 	compute instructions.ComputeUnit,
-	useStakedRPCFlag bool) {
+	useStakedRPCFlag bool,
+	method string) {
 
 	blockhash, err := solana.HashFromBase58(latestBlockhash)
 	if err != nil {
@@ -533,7 +534,7 @@ func sellToken(
 		return
 	}
 
-	switch config.SELL_METHOD {
+	switch method {
 	case "bloxroute":
 		rpc.SubmitBloxRouteTransaction(transaction, useStakedRPCFlag)
 		break
@@ -570,7 +571,7 @@ func generateInstructions(ammId *solana.PublicKey) ([]*solana.Transaction, error
 	}
 
 	compute := instructions.ComputeUnit{
-		MicroLamports: 5556,
+		MicroLamports: 1000,
 		Units:         45000,
 		Tip:           0,
 	}
@@ -594,7 +595,7 @@ func generateInstructions(ammId *solana.PublicKey) ([]*solana.Transaction, error
 		chunk.Chunk.Uint64(),
 		50000,
 		"sell",
-		"rpc",
+		config.SELL_METHOD,
 	)
 
 	_, transaction2, err := instructions.MakeSwapInstructions(
