@@ -195,8 +195,12 @@ func GrpcSubscribeByAddresses(grpcToken string, accountInclude []string, account
 			var errorString string
 
 			if meta.Err != nil {
-				relevantByte := meta.Err.Err[9]
-				errorString = fmt.Sprintf("0x%x", relevantByte)
+				if len(meta.Err.Err) > 9 {
+					relevantByte := meta.Err.Err[9]
+					errorString = fmt.Sprintf("0x%x", relevantByte)
+				} else {
+					errorString = "ERR"
+				}
 			}
 
 			response := &GeyserResponse{

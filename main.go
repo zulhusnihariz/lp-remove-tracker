@@ -324,6 +324,11 @@ func processSwapBaseIn(ins generators.TxInstruction, tx generators.GeyserRespons
 		signerAccountIndex = 16
 	}
 
+	if sourceAccountIndex >= len(ins.Accounts) || destinationAccountIndex >= len(ins.Accounts) || signerAccountIndex >= len(ins.Accounts) {
+		log.Printf("%s | Invalid data length (%d)", ammId, len(ins.Accounts))
+		return
+	}
+
 	sourceTokenAccount, err = getPublicKeyFromTx(sourceAccountIndex, tx.MempoolTxns, ins)
 	destinationTokenAccount, err = getPublicKeyFromTx(destinationAccountIndex, tx.MempoolTxns, ins)
 	signerPublicKey, err = getPublicKeyFromTx(signerAccountIndex, tx.MempoolTxns, ins)
@@ -396,6 +401,7 @@ func processSwapBaseIn(ins generators.TxInstruction, tx generators.GeyserRespons
 
 	// Machine gun technique
 	startMachineGun(amount, amountSol, tracker, ammId)
+	// sniper(amount, amountSol, pKey, tx)
 }
 
 func startMachineGun(amount *big.Int, amountSol *big.Int, tracker *types.Tracker, ammId *solana.PublicKey) {
@@ -426,7 +432,7 @@ func sniper(amount *big.Int, amountSol *big.Int, pKey *types.RaydiumPoolKeys, tx
 			}
 
 			compute := instructions.ComputeUnit{
-				MicroLamports: 800000,
+				MicroLamports: 1000000,
 				Units:         45000,
 				Tip:           tip,
 			}
