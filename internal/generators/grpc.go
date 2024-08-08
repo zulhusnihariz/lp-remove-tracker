@@ -113,7 +113,7 @@ func CloseConnection() error {
 	return nil
 }
 
-func GrpcSubscribeByAddresses(grpcToken string, accountInclude []string, accountExclude []string, txChannel chan<- GeyserResponse) error {
+func GrpcSubscribeByAddresses(sourceName string, grpcToken string, accountInclude []string, accountExclude []string, txChannel chan<- GeyserResponse) error {
 	if client == nil {
 		return errors.New("GRPC not connected")
 	}
@@ -205,7 +205,7 @@ func GrpcSubscribeByAddresses(grpcToken string, accountInclude []string, account
 
 			response := &GeyserResponse{
 				MempoolTxns: MempoolTxn{
-					Source:               "grpc",
+					Source:               sourceName,
 					Signature:            base58.Encode(resp.GetTransaction().Transaction.Signature),
 					AccountKeys:          convertAccountKeys(message.AccountKeys),
 					RecentBlockhash:      base58.Encode(message.RecentBlockhash),

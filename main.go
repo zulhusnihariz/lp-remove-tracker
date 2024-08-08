@@ -69,6 +69,7 @@ func main() {
 	txChannel := make(chan generators.GeyserResponse)
 
 	var wg sync.WaitGroup
+	var processed sync.Map
 
 	// Create a worker pool
 	for i := 0; i < numCPU; i++ {
@@ -76,7 +77,13 @@ func main() {
 		go func() {
 			defer wg.Done()
 			for response := range txChannel {
-				processResponse(response)
+				if _, exists := processed.Load(response.MempoolTxns.Signature); !exists {
+					processed.Store(response.MempoolTxns.Signature, true)
+					processResponse(response)
+				} else {
+					// Log or handle duplicate signature if necessary
+					log.Printf("Duplicate signature found: %s", response.MempoolTxns.Signature)
+				}
 			}
 		}()
 	}
@@ -87,11 +94,22 @@ func main() {
 		runBatchTransactionThread()
 	}()
 
-	generators.GrpcSubscribeByAddresses(
-		config.GrpcToken,
-		[]string{config.RAYDIUM_AMM_V4.String()},
-		[]string{}, txChannel)
+	var subscribeWg sync.WaitGroup
 
+	subscribeWg.Add(1)
+	go func() {
+		defer subscribeWg.Done()
+		err := generators.GrpcSubscribeByAddresses(
+			"raydium",
+			config.GrpcToken,
+			[]string{config.RAYDIUM_AMM_V4.String()},
+			[]string{}, txChannel)
+		if err != nil {
+			log.Printf("Error in first gRPC subscription: %v", err)
+		}
+	}()
+
+	subscribeWg.Wait()
 	wg.Wait()
 
 	defer func() {
