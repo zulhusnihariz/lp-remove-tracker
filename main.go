@@ -277,12 +277,12 @@ func processWithdraw(ins generators.TxInstruction, tx generators.GeyserResponse)
 	}
 
 	compute := instructions.ComputeUnit{
-		MicroLamports: 1000000,
+		MicroLamports: 500000,
 		Units:         85000,
 		Tip:           0,
 	}
 
-	buyToken(pKey, 20000, 0, ammId, compute, false, config.BUY_METHOD)
+	buyToken(pKey, 100000, 0, ammId, compute, false, config.BUY_METHOD)
 }
 
 /**
@@ -421,7 +421,7 @@ func sniper(amount *big.Int, amountSol *big.Int, pKey *types.RaydiumPoolKeys, tx
 			log.Printf("%s | Potential entry %d SOL (Slot %d) | %s", pKey.ID, amountSol, tx.MempoolTxns.Slot, tx.MempoolTxns.Signature)
 
 			compute := instructions.ComputeUnit{
-				MicroLamports: 1000,
+				MicroLamports: 1500,
 				Units:         45000,
 				Tip:           0,
 			}
@@ -585,7 +585,7 @@ func generateInstructions(ammId *solana.PublicKey, method string) ([]*solana.Tra
 	}
 
 	compute := instructions.ComputeUnit{
-		MicroLamports: 1000,
+		MicroLamports: 1005,
 		Units:         45000,
 		Tip:           0,
 	}
@@ -636,7 +636,3 @@ func getOrCreateAssociatedTokenAccount() (*solana.PublicKey, error) {
 
 	return &ata, nil
 }
-
-// 0.013826822
-// 0.098926822
-// 0.0851
