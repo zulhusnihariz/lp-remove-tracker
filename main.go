@@ -94,27 +94,31 @@ func main() {
 		runBatchTransactionThread()
 	}()
 
-	var subscribeWg sync.WaitGroup
+	listenFor([]string{
+		config.RAYDIUM_AMM_V4.String(),
+	}, txChannel, &wg)
 
-	subscribeWg.Add(1)
-	go func() {
-		defer subscribeWg.Done()
-		err := generators.GrpcSubscribeByAddresses(
-			"raydium",
-			config.GrpcToken,
-			[]string{config.RAYDIUM_AMM_V4.String()},
-			[]string{}, txChannel)
-		if err != nil {
-			log.Printf("Error in first gRPC subscription: %v", err)
-		}
-	}()
-
-	subscribeWg.Wait()
 	wg.Wait()
 
 	defer func() {
 		if err := generators.CloseConnection(); err != nil {
 			log.Printf("Error closing gRPC connection: %v", err)
+		}
+	}()
+}
+
+// Listening geyser for new addresses
+func listenFor(addresses []string, txChannel chan generators.GeyserResponse, wg *sync.WaitGroup) {
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		err := generators.GrpcSubscribeByAddresses(
+			addresses[0],
+			config.GrpcToken,
+			addresses,
+			[]string{}, txChannel)
+		if err != nil {
+			log.Printf("Error in first gRPC subscription: %v", err)
 		}
 	}()
 }
