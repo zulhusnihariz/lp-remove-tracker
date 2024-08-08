@@ -132,7 +132,7 @@ func runBatchTransactionProcess() {
 				log.Printf("%s| Remove from tracking", tracker.AmmId)
 				go bot.TrackedAmm(tracker.AmmId, true)
 			} else {
-				txs, err := generateInstructions(tracker.AmmId)
+				txs, err := generateInstructions(tracker.AmmId, "bloxroute")
 				if err != nil {
 					log.Print(err)
 				}
@@ -282,7 +282,7 @@ func processWithdraw(ins generators.TxInstruction, tx generators.GeyserResponse)
 		Tip:           0,
 	}
 
-	buyToken(pKey, 20000, 0, ammId, compute, false)
+	buyToken(pKey, 20000, 0, ammId, compute, false, config.BUY_METHOD)
 }
 
 /**
@@ -375,7 +375,7 @@ func processSwapBaseIn(ins generators.TxInstruction, tx generators.GeyserRespons
 					Chunk:     new(big.Int).Div(amount, big.NewInt(config.ChunkSplitter)),
 				})
 
-				bot.TrackedAmm(ammId, false)
+				bot.TrackedAmm(ammId, true)
 				log.Printf("%s | Tracked", ammId)
 			}
 			return
@@ -401,7 +401,7 @@ func processSwapBaseIn(ins generators.TxInstruction, tx generators.GeyserRespons
 
 	// Machine gun technique
 	startMachineGun(amount, amountSol, tracker, ammId)
-	// sniper(amount, amountSol, pKey, tx)
+	sniper(amount, amountSol, pKey, tx)
 }
 
 func startMachineGun(amount *big.Int, amountSol *big.Int, tracker *types.Tracker, ammId *solana.PublicKey) {
@@ -417,24 +417,31 @@ func startMachineGun(amount *big.Int, amountSol *big.Int, tracker *types.Tracker
 
 func sniper(amount *big.Int, amountSol *big.Int, pKey *types.RaydiumPoolKeys, tx generators.GeyserResponse) {
 	if amount.Sign() == -1 {
-		if amountSol.Cmp(big.NewInt(1100000)) == 1 {
+		if amountSol.Cmp(big.NewInt(10000000)) == 1 {
 			log.Printf("%s | Potential entry %d SOL (Slot %d) | %s", pKey.ID, amountSol, tx.MempoolTxns.Slot, tx.MempoolTxns.Signature)
 
-			var tip uint64
-			var minAmountOut uint64
-			var useStakedRPCFlag bool = false
-			if amountSol.Uint64() > 200000000 {
-				tip = 200000000
-				minAmountOut = 200000000
-			} else {
-				tip = 0
-				minAmountOut = 50000
+			compute := instructions.ComputeUnit{
+				MicroLamports: 1000,
+				Units:         45000,
+				Tip:           0,
 			}
 
-			compute := instructions.ComputeUnit{
-				MicroLamports: 1000000,
-				Units:         45000,
-				Tip:           tip,
+			var minAmountOut uint64
+			var useStakedRPCFlag bool = false
+			if amountSol.Uint64() > 10000000 {
+				tipBigInt := new(big.Int).Mul(amountSol, big.NewInt(87))
+				tipBigInt.Div(tipBigInt, big.NewInt(100))
+				compute.Tip = tipBigInt.Uint64()
+
+				mAmount := new(big.Int).Mul(amountSol, big.NewInt(92))
+				mAmount.Div(tipBigInt, big.NewInt(100))
+
+				minAmountOut = mAmount.Uint64()
+
+				useStakedRPCFlag = true
+			} else {
+				compute.Tip = 0
+				minAmountOut = 50000
 			}
 
 			chunk, err := bot.GetTokenChunk(&pKey.ID)
@@ -448,7 +455,7 @@ func sniper(amount *big.Int, amountSol *big.Int, pKey *types.RaydiumPoolKeys, tx
 				return
 			}
 
-			go sellToken(pKey, chunk, minAmountOut, &pKey.ID, compute, useStakedRPCFlag, config.SELL_METHOD)
+			go sellToken(pKey, chunk, minAmountOut, &pKey.ID, compute, useStakedRPCFlag, "bloxroute")
 		}
 	}
 }
@@ -459,7 +466,8 @@ func buyToken(
 	minAmountOut uint64,
 	ammId *solana.PublicKey,
 	compute instructions.ComputeUnit,
-	useStakedRPCFlag bool) {
+	useStakedRPCFlag bool,
+	method string) {
 
 	blockhash, err := solana.HashFromBase58(latestBlockhash)
 	if err != nil {
@@ -487,7 +495,7 @@ func buyToken(
 		return
 	}
 
-	switch config.SELL_METHOD {
+	switch method {
 	case "bloxroute":
 		rpc.SubmitBloxRouteTransaction(transaction, useStakedRPCFlag)
 		break
@@ -532,7 +540,7 @@ func sellToken(
 		chunk.Chunk.Uint64(),
 		minAmountOut,
 		"sell",
-		config.SELL_METHOD,
+		method,
 	)
 
 	if err != nil {
@@ -558,7 +566,7 @@ func sellToken(
 	log.Printf("%s | SELL | %s", ammId, signatures)
 }
 
-func generateInstructions(ammId *solana.PublicKey) ([]*solana.Transaction, error) {
+func generateInstructions(ammId *solana.PublicKey, method string) ([]*solana.Transaction, error) {
 
 	var txs []*solana.Transaction = []*solana.Transaction{}
 
@@ -601,21 +609,10 @@ func generateInstructions(ammId *solana.PublicKey) ([]*solana.Transaction, error
 		chunk.Chunk.Uint64(),
 		50000,
 		"sell",
-		config.SELL_METHOD,
+		method,
 	)
 
-	_, transaction2, err := instructions.MakeSwapInstructions(
-		pKey,
-		wsolTokenAccount,
-		compute,
-		options,
-		big.NewInt(0).Mul(chunk.Chunk, big.NewInt(2)).Uint64(),
-		50000,
-		"sell",
-		"rpc",
-	)
-
-	txs = append(txs, transaction, transaction2)
+	txs = append(txs, transaction)
 
 	if err != nil {
 		log.Printf("%s | %s", ammId, err)
@@ -639,3 +636,7 @@ func getOrCreateAssociatedTokenAccount() (*solana.PublicKey, error) {
 
 	return &ata, nil
 }
+
+// 0.013826822
+// 0.098926822
+// 0.0851
