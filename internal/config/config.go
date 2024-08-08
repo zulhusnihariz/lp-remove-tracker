@@ -26,7 +26,6 @@ var (
 	BUY_METHOD        = "bloxroute"
 	SELL_METHOD       = "bloxroute" // "rpc", "bloxroute", "jito"
 	BLOCKENGINE_URL   = "https://amsterdam.mainnet.block-engine.jito.wtf"
-	JITO_API_KEY      = ""
 )
 
 var (

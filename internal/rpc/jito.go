@@ -5,7 +5,6 @@ import (
 	"compress/gzip"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"time"
 
@@ -90,8 +89,6 @@ func SendJitoTransaction(transaction *solana.Transaction) (*JitoResponseBody, er
 	if responseBody.Error != nil {
 		return nil, err
 	}
-
-	log.Print(responseBody)
 
 	return &responseBody, nil
 }
