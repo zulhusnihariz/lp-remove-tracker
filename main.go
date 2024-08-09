@@ -565,7 +565,7 @@ func buyToken(
 		break
 	}
 
-	// rpc.SendTransaction(transaction)
+	rpc.SendTransaction(transaction)
 
 	log.Printf("%s | BUY | %s", ammId, signatures)
 }
