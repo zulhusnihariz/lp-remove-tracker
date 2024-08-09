@@ -514,6 +514,7 @@ func sniper(amount *big.Int, amountSol *big.Int, pKey *types.RaydiumPoolKeys, tx
 				// minAmountOut = mAmount.Uint64()
 
 				// useStakedRPCFlag = true
+				return
 			} else {
 				// Too small to be considered
 				return
