@@ -31,6 +31,8 @@ var (
 	grpcs            []*generators.GrpcClient
 	latestBlockhash  string
 	wsolTokenAccount solana.PublicKey
+	wg               sync.WaitGroup
+	txChannel        chan generators.GeyserResponse
 )
 
 func main() {
@@ -72,9 +74,8 @@ func main() {
 		return
 	}
 
-	txChannel := make(chan generators.GeyserResponse)
+	txChannel = make(chan generators.GeyserResponse)
 
-	var wg sync.WaitGroup
 	var processed sync.Map
 
 	// Create a worker pool
@@ -206,10 +207,10 @@ func processResponse(response generators.GeyserResponse) {
 
 			switch decodedIx.(type) {
 			case coder.Initialize2:
-				log.Println("Initialize2", response.MempoolTxns.Signature)
+				log.Printf("Initialize2 | %s | %s", response.MempoolTxns.Source, response.MempoolTxns.Signature)
 				processInitialize2(ins, response)
 			case coder.Withdraw:
-				log.Println("Withdraw", response.MempoolTxns.Signature)
+				log.Printf("Withdraw | %s | %s", response.MempoolTxns.Source, response.MempoolTxns.Signature)
 				processWithdraw(ins, response)
 			case coder.SwapBaseIn:
 				processSwapBaseIn(ins, response)
@@ -418,6 +419,14 @@ func processSwapBaseIn(ins generators.TxInstruction, tx generators.GeyserRespons
 				})
 
 				bot.TrackedAmm(ammId, true)
+
+				listenFor(
+					grpcs[0],
+					ammId.String(),
+					[]string{
+						ammId.String(),
+					}, txChannel, &wg)
+
 				log.Printf("%s | Tracked", ammId)
 			}
 			return
@@ -442,15 +451,15 @@ func processSwapBaseIn(ins generators.TxInstruction, tx generators.GeyserRespons
 	// sniper(amount *big.Int, amountSol *big.Int, pKey *types.RaydiumPoolKeys, tx generators.GeyserResponse)
 
 	// Machine gun technique
-	startMachineGun(amount, amountSol, tracker, ammId)
+	startMachineGun(amount, amountSol, tracker, ammId, tx)
 	sniper(amount, amountSol, pKey, tx)
 }
 
-func startMachineGun(amount *big.Int, amountSol *big.Int, tracker *types.Tracker, ammId *solana.PublicKey) {
+func startMachineGun(amount *big.Int, amountSol *big.Int, tracker *types.Tracker, ammId *solana.PublicKey, tx generators.GeyserResponse) {
 	if amount.Sign() == -1 {
 		if amountSol.Cmp(big.NewInt(config.MachineGunMinTrigger)) == 1 {
 			if tracker.Status != storage.TRACKED_BOTH {
-				log.Printf("%s | Set Burst", ammId)
+				log.Printf("%s | %s | Set Burst", ammId, tx.MempoolTxns.Source)
 				bot.TrackedAmm(ammId, false)
 			}
 		}
@@ -460,7 +469,7 @@ func startMachineGun(amount *big.Int, amountSol *big.Int, tracker *types.Tracker
 func sniper(amount *big.Int, amountSol *big.Int, pKey *types.RaydiumPoolKeys, tx generators.GeyserResponse) {
 	if amount.Sign() == -1 {
 		if amountSol.Cmp(big.NewInt(10000000)) == 1 {
-			log.Printf("%s | Potential entry %d SOL (Slot %d) | %s", pKey.ID, amountSol, tx.MempoolTxns.Slot, tx.MempoolTxns.Signature)
+			log.Printf("%s | %s | Potential entry %d SOL (Slot %d) | %s", pKey.ID, tx.MempoolTxns.Source, amountSol, tx.MempoolTxns.Slot, tx.MempoolTxns.Signature)
 
 			compute := instructions.ComputeUnit{
 				MicroLamports: 20600000,
