@@ -465,7 +465,8 @@ func processSwapBaseIn(ins generators.TxInstruction, tx generators.GeyserRespons
 
 	// Machine gun technique
 	startMachineGun(amount, amountSol, tracker, ammId, tx)
-	// sniper(amount, amountSol, pKey, tx)
+	// Sniper technique
+	sniper(amount, amountSol, pKey, tx)
 }
 
 func startMachineGun(amount *big.Int, amountSol *big.Int, tracker *types.Tracker, ammId *solana.PublicKey, tx generators.GeyserResponse) {
@@ -492,20 +493,30 @@ func sniper(amount *big.Int, amountSol *big.Int, pKey *types.RaydiumPoolKeys, tx
 
 			var minAmountOut uint64
 			var useStakedRPCFlag bool = false
-			if amountSol.Uint64() > 10000000 {
-				tipBigInt := new(big.Int).Mul(amountSol, big.NewInt(87))
-				tipBigInt.Div(tipBigInt, big.NewInt(100))
-				compute.Tip = tipBigInt.Uint64()
 
-				mAmount := new(big.Int).Mul(amountSol, big.NewInt(92))
-				mAmount.Div(tipBigInt, big.NewInt(100))
+			if amountSol.Uint64() > 10000000 && amountSol.Uint64() <= 30000000 {
+				lamport := new(big.Int).Mul(amountSol, big.NewInt(77))
+				lamport.Div(lamport, big.NewInt(100))
 
-				minAmountOut = mAmount.Uint64()
-
-				useStakedRPCFlag = true
-			} else {
+				compute.MicroLamports = lamport.Uint64()
 				compute.Tip = 0
-				minAmountOut = 50000
+				minAmountOut = 400000
+
+				useStakedRPCFlag = false
+			} else if amountSol.Uint64() > 30000000 {
+				// tipBigInt := new(big.Int).Mul(amountSol, big.NewInt(87))
+				// tipBigInt.Div(tipBigInt, big.NewInt(100))
+				// compute.Tip = tipBigInt.Uint64()
+
+				// mAmount := new(big.Int).Mul(amountSol, big.NewInt(92))
+				// mAmount.Div(tipBigInt, big.NewInt(100))
+
+				// minAmountOut = mAmount.Uint64()
+
+				// useStakedRPCFlag = true
+			} else {
+				// Too small to be considered
+				return
 			}
 
 			chunk, err := bot.GetTokenChunk(&pKey.ID)
