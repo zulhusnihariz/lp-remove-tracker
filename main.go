@@ -486,7 +486,7 @@ func sniper(amount *big.Int, amountSol *big.Int, pKey *types.RaydiumPoolKeys, tx
 			log.Printf("%s | %s | Potential entry %d SOL (Slot %d) | %s", pKey.ID, tx.MempoolTxns.Source, amountSol, tx.MempoolTxns.Slot, tx.MempoolTxns.Signature)
 
 			compute := instructions.ComputeUnit{
-				MicroLamports: 20600000,
+				MicroLamports: 0,
 				Units:         45000,
 				Tip:           0,
 			}
