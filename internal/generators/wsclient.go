@@ -13,15 +13,16 @@ import (
 type WSClient struct {
 	conn *websocket.Conn
 	url  string
+	auth string
 	done chan struct{}
 }
 
 func NewWSClient(url string, auth string) (*WSClient, error) {
 
-	headers := make(http.Header)
-	headers.Add("Authorization", auth)
+	conn, _, err := websocket.DefaultDialer.Dial(url, http.Header{
+		"Authorization": {auth},
+	})
 
-	conn, _, err := websocket.DefaultDialer.Dial(url, headers)
 	if err != nil {
 		return nil, err
 	}
@@ -29,6 +30,7 @@ func NewWSClient(url string, auth string) (*WSClient, error) {
 	client := &WSClient{
 		conn: conn,
 		url:  url,
+		auth: auth,
 		done: make(chan struct{}),
 	}
 
@@ -49,11 +51,32 @@ func (c *WSClient) listenMessages() {
 	}
 }
 
+func (c *WSClient) reconnect() error {
+	conn, _, err := websocket.DefaultDialer.Dial(c.url, http.Header{
+		"Authorization": {c.auth},
+	})
+
+	if err != nil {
+		return err
+	}
+
+	c.conn = conn
+
+	return nil
+}
+
 func (c *WSClient) SendMessage(message string) error {
 	err := c.conn.WriteMessage(websocket.TextMessage, []byte(message))
 	if err != nil {
-		log.Println("Error sending message:", err)
-		return err
+		if err := c.reconnect(); err != nil {
+			return err
+		}
+
+		// Retry sending the message after reconnecting
+		err = c.conn.WriteMessage(websocket.TextMessage, []byte(message))
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
