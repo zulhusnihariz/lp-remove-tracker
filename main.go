@@ -64,6 +64,7 @@ func main() {
 	}
 
 	bloxRouteRpc, err = rpc.NewBloxRouteRpc()
+
 	if err != nil {
 		log.Print(err)
 	}
@@ -106,6 +107,12 @@ func main() {
 	go func() {
 		defer wg.Done()
 		runBatchTransactionThread()
+	}()
+
+	wg.Add(1)
+	go func() {
+		wsClient := bloxRouteRpc.GetWsConnection()
+		wsClient.ReadMessages()
 	}()
 
 	listenFor(

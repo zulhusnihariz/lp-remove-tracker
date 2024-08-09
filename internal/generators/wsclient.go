@@ -11,7 +11,7 @@ import (
 )
 
 type WSClient struct {
-	conn *websocket.Conn
+	Conn *websocket.Conn
 	url  string
 	auth string
 	done chan struct{}
@@ -19,7 +19,7 @@ type WSClient struct {
 
 func NewWSClient(url string, auth string) (*WSClient, error) {
 
-	conn, _, err := websocket.DefaultDialer.Dial(url, http.Header{
+	Conn, _, err := websocket.DefaultDialer.Dial(url, http.Header{
 		"Authorization": {auth},
 	})
 
@@ -28,7 +28,7 @@ func NewWSClient(url string, auth string) (*WSClient, error) {
 	}
 
 	client := &WSClient{
-		conn: conn,
+		Conn: Conn,
 		url:  url,
 		auth: auth,
 		done: make(chan struct{}),
@@ -42,7 +42,7 @@ func NewWSClient(url string, auth string) (*WSClient, error) {
 func (c *WSClient) listenMessages() {
 	defer close(c.done)
 	for {
-		_, message, err := c.conn.ReadMessage()
+		_, message, err := c.Conn.ReadMessage()
 		if err != nil {
 			log.Println("Error reading message:", err)
 			return
@@ -51,8 +51,8 @@ func (c *WSClient) listenMessages() {
 	}
 }
 
-func (c *WSClient) reconnect() error {
-	conn, _, err := websocket.DefaultDialer.Dial(c.url, http.Header{
+func (c *WSClient) reConnect() error {
+	Conn, _, err := websocket.DefaultDialer.Dial(c.url, http.Header{
 		"Authorization": {c.auth},
 	})
 
@@ -60,20 +60,20 @@ func (c *WSClient) reconnect() error {
 		return err
 	}
 
-	c.conn = conn
+	c.Conn = Conn
 
 	return nil
 }
 
 func (c *WSClient) SendMessage(message string) error {
-	err := c.conn.WriteMessage(websocket.TextMessage, []byte(message))
+	err := c.Conn.WriteMessage(websocket.TextMessage, []byte(message))
 	if err != nil {
-		if err := c.reconnect(); err != nil {
+		if err := c.reConnect(); err != nil {
 			return err
 		}
 
-		// Retry sending the message after reconnecting
-		err = c.conn.WriteMessage(websocket.TextMessage, []byte(message))
+		// Retry sending the message after reConnecting
+		err = c.Conn.WriteMessage(websocket.TextMessage, []byte(message))
 		if err != nil {
 			return err
 		}
@@ -83,17 +83,20 @@ func (c *WSClient) SendMessage(message string) error {
 
 func (c *WSClient) ReadMessages() {
 	for {
-		_, message, err := c.conn.ReadMessage()
+		_, message, err := c.Conn.ReadMessage()
 		if err != nil {
-			log.Println("read:", err)
+			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+				log.Printf("error: %v", err)
+			}
 			return
 		}
-		log.Printf("recv: %s", message)
+
+		log.Print(message)
 	}
 }
 
 func (c *WSClient) Close() error {
-	err := c.conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
+	err := c.Conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
 	if err != nil {
 		return err
 	}
@@ -101,17 +104,17 @@ func (c *WSClient) Close() error {
 	case <-c.done:
 	case <-time.After(time.Second):
 	}
-	return c.conn.Close()
+	return c.Conn.Close()
 }
 
-// WaitForInterrupt waits for an interrupt signal to gracefully close the WebSocket connection.
+// WaitForInterrupt waits for an interrupt signal to gracefully close the WebSocket Connection.
 func (c *WSClient) WaitForInterrupt() {
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt)
 
 	select {
 	case <-interrupt:
-		log.Println("Interrupt received, closing connection...")
+		log.Println("Interrupt received, closing Connection...")
 		c.Close()
 	}
 }

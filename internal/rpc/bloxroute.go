@@ -158,3 +158,7 @@ func (b *BloxRouteRpc) StreamBloxRouteTransaction(transaction *solana.Transactio
 
 	return nil
 }
+
+func (c *BloxRouteRpc) GetWsConnection() *generators.WSClient {
+	return c.wsClient
+}
