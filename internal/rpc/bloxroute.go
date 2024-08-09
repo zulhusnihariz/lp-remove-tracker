@@ -8,19 +8,37 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"log"
 	"net/http"
 	"strings"
 	"time"
 
 	"github.com/gagliardetto/solana-go"
 	"github.com/iqbalbaharum/go-arbi-bot/internal/config"
+	"github.com/iqbalbaharum/go-arbi-bot/internal/generators"
 )
 
 type BloxRouteResponse struct {
 	Signature string `json:"signature"`
 }
 
-func SubmitBloxRouteTransaction(transaction *solana.Transaction, useStakedRPCs bool) (string, error) {
+type BloxRouteRpc struct {
+	wsClient *generators.WSClient
+}
+
+func NewBloxRouteRpc() (*BloxRouteRpc, error) {
+
+	wsClient, err := generators.NewWSClient(config.BloxRouteWsUrl, config.BloxRouteToken)
+	if err != nil {
+		return nil, err
+	}
+
+	return &BloxRouteRpc{
+		wsClient: wsClient,
+	}, nil
+}
+
+func (b *BloxRouteRpc) SubmitBloxRouteTransaction(transaction *solana.Transaction, useStakedRPCs bool) (string, error) {
 	client := &http.Client{
 		Timeout: 10 * time.Second,
 	}
@@ -102,4 +120,41 @@ func SubmitBloxRouteTransaction(transaction *solana.Transaction, useStakedRPCs b
 	}
 
 	return response.Signature, nil
+}
+
+func (b *BloxRouteRpc) StreamBloxRouteTransaction(transaction *solana.Transaction, useStakedRPCs bool) error {
+	if b.wsClient == nil {
+		return errors.New("no websocket client")
+	}
+
+	msg, err := transaction.MarshalBinary()
+
+	if err != nil {
+		return err
+	}
+
+	requestBody := map[string]interface{}{
+		"transaction": map[string]string{
+			"content": base64.StdEncoding.EncodeToString(msg),
+		},
+		"skipPreFlight":          true,
+		"frontRunningProtection": false,
+		"fastBestEffort":         false,
+		"useStakedRPCs":          useStakedRPCs,
+	}
+
+	jsonData, err := json.Marshal(requestBody)
+	if err != nil {
+		return err
+	}
+
+	// Convert jsonData to string
+	jsonString := string(jsonData)
+
+	err = b.wsClient.SendMessage(jsonString)
+	if err != nil {
+		log.Println("Error sending message:", err)
+	}
+
+	return nil
 }

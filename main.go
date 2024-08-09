@@ -29,6 +29,7 @@ func loadAdapter() {
 
 var (
 	grpcs            []*generators.GrpcClient
+	bloxRouteRpc     *rpc.BloxRouteRpc
 	latestBlockhash  string
 	wsolTokenAccount solana.PublicKey
 	wg               sync.WaitGroup
@@ -60,6 +61,11 @@ func main() {
 	if err != nil {
 		log.Print(err)
 		return
+	}
+
+	bloxRouteRpc, err = rpc.NewBloxRouteRpc()
+	if err != nil {
+		log.Print(err)
 	}
 
 	log.Printf("WSOL Associated Token Account %s", ata)
@@ -452,7 +458,7 @@ func processSwapBaseIn(ins generators.TxInstruction, tx generators.GeyserRespons
 
 	// Machine gun technique
 	startMachineGun(amount, amountSol, tracker, ammId, tx)
-	sniper(amount, amountSol, pKey, tx)
+	// sniper(amount, amountSol, pKey, tx)
 }
 
 func startMachineGun(amount *big.Int, amountSol *big.Int, tracker *types.Tracker, ammId *solana.PublicKey, tx generators.GeyserResponse) {
@@ -548,7 +554,7 @@ func buyToken(
 
 	switch method {
 	case "bloxroute":
-		rpc.SubmitBloxRouteTransaction(transaction, useStakedRPCFlag)
+		bloxRouteRpc.StreamBloxRouteTransaction(transaction, useStakedRPCFlag)
 		break
 	case "jito":
 		_, err := rpc.SendJitoTransaction(transaction)
@@ -601,7 +607,7 @@ func sellToken(
 
 	switch method {
 	case "bloxroute":
-		rpc.SubmitBloxRouteTransaction(transaction, useStakedRPCFlag)
+		bloxRouteRpc.SubmitBloxRouteTransaction(transaction, useStakedRPCFlag)
 		break
 	case "jito":
 		_, err := rpc.SendJitoTransaction(transaction)

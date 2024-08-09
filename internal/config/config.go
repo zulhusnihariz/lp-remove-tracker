@@ -50,6 +50,7 @@ var (
 	RpcHttpUrl           string
 	RpcWsUrl             string
 	BloxRouteUrl         string
+	BloxRouteWsUrl       string
 	BloxRouteToken       string
 	TxInterval           int
 	ChunkSplitter        int64
@@ -78,6 +79,7 @@ func InitEnv() error {
 	RpcHttpUrl = os.Getenv("RPC_HTTP_URL")
 	RpcWsUrl = os.Getenv("RPC_WS_URL")
 	BloxRouteUrl = os.Getenv("BLOXROUTE_URL")
+	BloxRouteWsUrl = os.Getenv("BLOXROUTE_WS_URL")
 	BloxRouteToken = os.Getenv("BLOXROUTE_TOKEN")
 
 	var err error
