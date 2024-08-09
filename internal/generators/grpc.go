@@ -76,12 +76,12 @@ type GeyserResponse struct {
 	MempoolTxns MempoolTxn `json:"mempoolTxns"`
 }
 
-var (
+type GrpcClient struct {
 	conn   *grpc.ClientConn
 	client pb.GeyserClient
-)
+}
 
-func GrpcConnect(address string, plaintext bool) {
+func GrpcConnect(address string, plaintext bool) (*GrpcClient, error) {
 	var opts []grpc.DialOption
 	if plaintext {
 		opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
@@ -98,23 +98,24 @@ func GrpcConnect(address string, plaintext bool) {
 
 	log.Println("Starting grpc client, connecting to", address)
 	var err error
-	conn, err = grpc.NewClient(address, opts...)
+	conn, err := grpc.NewClient(address, opts...)
 	if err != nil {
-		log.Fatalf("fail to dial: %v", err)
+		return nil, err
 	}
 
-	client = pb.NewGeyserClient(conn)
+	client := pb.NewGeyserClient(conn)
+	return &GrpcClient{conn, client}, nil
 }
 
-func CloseConnection() error {
-	if conn != nil {
-		return conn.Close()
+func (g *GrpcClient) CloseConnection() error {
+	if g.conn != nil {
+		return g.conn.Close()
 	}
 	return nil
 }
 
-func GrpcSubscribeByAddresses(sourceName string, grpcToken string, accountInclude []string, accountExclude []string, txChannel chan<- GeyserResponse) error {
-	if client == nil {
+func (g *GrpcClient) GrpcSubscribeByAddresses(sourceName string, grpcToken string, accountInclude []string, accountExclude []string, txChannel chan<- GeyserResponse) error {
+	if g.client == nil {
 		return errors.New("GRPC not connected")
 	}
 
@@ -160,7 +161,7 @@ func GrpcSubscribeByAddresses(sourceName string, grpcToken string, accountInclud
 		ctx = metadata.NewOutgoingContext(ctx, md)
 	}
 
-	stream, err := client.Subscribe(ctx,
+	stream, err := g.client.Subscribe(ctx,
 		grpc.MaxCallRecvMsgSize(100<<20),
 	)
 
@@ -271,13 +272,13 @@ func convertTokenBalances(tokenBalances []*pb.TokenBalance) []types.TxTokenBalan
 	return convertedBalances
 }
 
-func GetBlockhash() (solana.Hash, error) {
-	if client == nil {
+func (g *GrpcClient) GetBlockhash() (solana.Hash, error) {
+	if g.client == nil {
 		return solana.Hash{}, errors.New("GRPC not connected")
 	}
 
 	ctx := context.Background()
-	block, err := client.GetLatestBlockhash(ctx, &pb.GetLatestBlockhashRequest{
+	block, err := g.client.GetLatestBlockhash(ctx, &pb.GetLatestBlockhashRequest{
 		Commitment: pb.CommitmentLevel_CONFIRMED.Enum(),
 	})
 

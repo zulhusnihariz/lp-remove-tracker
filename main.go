@@ -21,7 +21,6 @@ import (
 	"github.com/iqbalbaharum/go-arbi-bot/internal/rpc"
 	"github.com/iqbalbaharum/go-arbi-bot/internal/storage"
 	"github.com/iqbalbaharum/go-arbi-bot/internal/types"
-	pb "github.com/rpcpool/yellowstone-grpc/examples/golang/proto"
 )
 
 func loadAdapter() {
@@ -29,7 +28,7 @@ func loadAdapter() {
 }
 
 var (
-	client           *pb.GeyserClient
+	grpcs            []*generators.GrpcClient
 	latestBlockhash  string
 	wsolTokenAccount solana.PublicKey
 )
@@ -64,7 +63,14 @@ func main() {
 	log.Printf("WSOL Associated Token Account %s", ata)
 	wsolTokenAccount = *ata
 
-	generators.GrpcConnect(config.GrpcAddr, config.InsecureConnection)
+	client, err := generators.GrpcConnect(config.GRPC1.Addr, config.GRPC1.InsecureConnection)
+	client2, err := generators.GrpcConnect(config.GRPC2.Addr, config.GRPC2.InsecureConnection)
+
+	grpcs = append(grpcs, client, client2)
+	if err != nil {
+		log.Fatalf("Error in GRPC connection: %s ", err)
+		return
+	}
 
 	txChannel := make(chan generators.GeyserResponse)
 
@@ -80,9 +86,10 @@ func main() {
 				if _, exists := processed.Load(response.MempoolTxns.Signature); !exists {
 					processed.Store(response.MempoolTxns.Signature, true)
 					processResponse(response)
-				} else {
-					// Log or handle duplicate signature if necessary
-					log.Printf("Duplicate signature found: %s", response.MempoolTxns.Signature)
+
+					time.AfterFunc(1*time.Minute, func() {
+						processed.Delete(response.MempoolTxns.Signature)
+					})
 				}
 			}
 		}()
@@ -94,26 +101,39 @@ func main() {
 		runBatchTransactionThread()
 	}()
 
-	listenFor([]string{
-		config.RAYDIUM_AMM_V4.String(),
-	}, txChannel, &wg)
+	listenFor(
+		grpcs[0],
+		"triton",
+		[]string{
+			config.RAYDIUM_AMM_V4.String(),
+		}, txChannel, &wg)
+
+	listenFor(
+		grpcs[1],
+		"solana-tracker",
+		[]string{
+			config.RAYDIUM_AMM_V4.String(),
+		}, txChannel, &wg)
 
 	wg.Wait()
 
-	defer func() {
-		if err := generators.CloseConnection(); err != nil {
-			log.Printf("Error closing gRPC connection: %v", err)
-		}
-	}()
+	for i := 0; i < len(grpcs); i++ {
+		grpc := grpcs[i]
+		defer func() {
+			if err := grpc.CloseConnection(); err != nil {
+				log.Printf("Error closing gRPC connection: %v", err)
+			}
+		}()
+	}
 }
 
 // Listening geyser for new addresses
-func listenFor(addresses []string, txChannel chan generators.GeyserResponse, wg *sync.WaitGroup) {
+func listenFor(client *generators.GrpcClient, name string, addresses []string, txChannel chan generators.GeyserResponse, wg *sync.WaitGroup) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		err := generators.GrpcSubscribeByAddresses(
-			addresses[0],
+		err := client.GrpcSubscribeByAddresses(
+			name,
 			config.GrpcToken,
 			addresses,
 			[]string{}, txChannel)

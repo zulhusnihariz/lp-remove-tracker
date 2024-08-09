@@ -10,6 +10,7 @@ import (
 
 	"github.com/gagliardetto/solana-go"
 	"github.com/iqbalbaharum/go-arbi-bot/internal/adapter"
+	"github.com/iqbalbaharum/go-arbi-bot/internal/types"
 	"github.com/joho/godotenv"
 )
 
@@ -26,6 +27,16 @@ var (
 	BUY_METHOD        = "bloxroute"
 	SELL_METHOD       = "bloxroute" // "rpc", "bloxroute", "jito"
 	BLOCKENGINE_URL   = "https://amsterdam.mainnet.block-engine.jito.wtf"
+	GRPC1             = types.GrpcConfig{
+		Addr:               "lineage-ams.rpcpool.com",
+		Token:              "390cc92f-d182-4400-a829-9524d8a9e23a",
+		InsecureConnection: false,
+	}
+	GRPC2 = types.GrpcConfig{
+		Addr:               "2.57.214.64:4001",
+		Token:              "",
+		InsecureConnection: true,
+	}
 )
 
 var (
