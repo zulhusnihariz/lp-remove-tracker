@@ -34,10 +34,10 @@ var (
 	wsolTokenAccount solana.PublicKey
 	wg               sync.WaitGroup
 	txChannel        chan generators.GeyserResponse
+	test             bool = false
 )
 
 func main() {
-
 	numCPU := runtime.NumCPU() * 2
 	maxProcs := runtime.GOMAXPROCS(0)
 	log.Printf("Number of logical CPUs available: %d", numCPU)
@@ -227,6 +227,10 @@ func processResponse(response generators.GeyserResponse) {
 				processWithdraw(ins, response)
 			case coder.SwapBaseIn:
 				processSwapBaseIn(ins, response)
+				if !test {
+					test = true
+					processTest()
+				}
 			case coder.SwapBaseOut:
 			default:
 				log.Println("Unknown instruction type")
@@ -336,6 +340,25 @@ func processWithdraw(ins generators.TxInstruction, tx generators.GeyserResponse)
 		MicroLamports: 500000,
 		Units:         85000,
 		Tip:           0,
+	}
+
+	buyToken(pKey, 100000, 0, ammId, compute, false, config.BUY_METHOD)
+}
+
+func processTest() {
+	a := solana.MustPublicKeyFromBase58("GoM3FWb524vEdFn5EaR6bSWE9Zyuuo4dT7Hq8MF66gGi")
+	ammId := &a
+
+	pKey, err := liquidity.GetPoolKeys(ammId)
+	if err != nil {
+		log.Printf("%s | %s", ammId, err)
+		return
+	}
+
+	compute := instructions.ComputeUnit{
+		MicroLamports: 500000,
+		Units:         85000,
+		Tip:           100000,
 	}
 
 	buyToken(pKey, 100000, 0, ammId, compute, false, config.BUY_METHOD)
@@ -492,6 +515,7 @@ func sniper(amount *big.Int, amountSol *big.Int, pKey *types.RaydiumPoolKeys, tx
 			}
 
 			var minAmountOut uint64
+			var method = "bloxroute"
 			var useStakedRPCFlag bool = false
 
 			if amountSol.Uint64() > 10000000 && amountSol.Uint64() <= 30000000 {
@@ -503,17 +527,19 @@ func sniper(amount *big.Int, amountSol *big.Int, pKey *types.RaydiumPoolKeys, tx
 				minAmountOut = 400000
 
 				useStakedRPCFlag = false
+				method = "bloxroute"
 			} else if amountSol.Uint64() > 30000000 {
-				// tipBigInt := new(big.Int).Mul(amountSol, big.NewInt(87))
-				// tipBigInt.Div(tipBigInt, big.NewInt(100))
-				// compute.Tip = tipBigInt.Uint64()
+				tipBigInt := new(big.Int).Mul(amountSol, big.NewInt(87))
+				tipBigInt.Div(tipBigInt, big.NewInt(100))
+				compute.Tip = tipBigInt.Uint64()
 
-				// mAmount := new(big.Int).Mul(amountSol, big.NewInt(92))
-				// mAmount.Div(tipBigInt, big.NewInt(100))
+				mAmount := new(big.Int).Mul(amountSol, big.NewInt(92))
+				mAmount.Div(tipBigInt, big.NewInt(100))
 
-				// minAmountOut = mAmount.Uint64()
+				minAmountOut = mAmount.Uint64()
 
-				// useStakedRPCFlag = true
+				useStakedRPCFlag = true
+				method = "jito"
 				return
 			} else {
 				// Too small to be considered
@@ -531,7 +557,7 @@ func sniper(amount *big.Int, amountSol *big.Int, pKey *types.RaydiumPoolKeys, tx
 				return
 			}
 
-			go sellToken(pKey, chunk, minAmountOut, &pKey.ID, compute, useStakedRPCFlag, "bloxroute")
+			go sellToken(pKey, chunk, minAmountOut, &pKey.ID, compute, useStakedRPCFlag, method)
 		}
 	}
 }
@@ -576,7 +602,7 @@ func buyToken(
 		bloxRouteRpc.StreamBloxRouteTransaction(transaction, useStakedRPCFlag)
 		break
 	case "jito":
-		_, err := rpc.SendJitoTransaction(transaction)
+		_, err := rpc.SendJitoBundle(transaction)
 		if err != nil {
 			log.Printf("%s | %s", ammId, err)
 			return
@@ -584,7 +610,7 @@ func buyToken(
 		break
 	}
 
-	rpc.SendTransaction(transaction)
+	// rpc.SendTransaction(transaction)
 
 	log.Printf("%s | BUY | %s", ammId, signatures)
 }
@@ -629,7 +655,7 @@ func sellToken(
 		bloxRouteRpc.SubmitBloxRouteTransaction(transaction, useStakedRPCFlag)
 		break
 	case "jito":
-		_, err := rpc.SendJitoTransaction(transaction)
+		_, err := rpc.SendJitoBundle(transaction)
 		if err != nil {
 			log.Printf("%s | %s", ammId, err)
 			return
