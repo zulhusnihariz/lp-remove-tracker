@@ -560,6 +560,7 @@ func sniper(amount *big.Int, amountSol *big.Int, pKey *types.RaydiumPoolKeys, tx
 				return
 			}
 
+			log.Printf("%s | Sniping prepation done", pKey.ID)
 			go sellToken(pKey, chunk, minAmountOut, &pKey.ID, compute, useStakedRPCFlag, method)
 		}
 	}
