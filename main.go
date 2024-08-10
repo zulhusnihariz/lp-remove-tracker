@@ -602,7 +602,7 @@ func buyToken(
 
 	switch method {
 	case "bloxroute":
-		bloxRouteRpc.StreamBloxRouteTransaction(transaction, useStakedRPCFlag)
+		bloxRouteRpc.SubmitBloxRouteTransaction(transaction, useStakedRPCFlag)
 		break
 	case "jito":
 		_, err := rpc.SendJitoBundle(transaction)
