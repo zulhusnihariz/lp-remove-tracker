@@ -15,19 +15,21 @@ import (
 )
 
 var (
-	WRAPPED_SOL       = solana.MustPublicKeyFromBase58("So11111111111111111111111111111111111111112")
-	RAYDIUM_AMM_V4    = solana.MustPublicKeyFromBase58("675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8")
-	OPENBOOK_ID       = solana.MustPublicKeyFromBase58("srmqPvymJeFKQ4zGQed1GFppgkRHL9kaELCbyksJtPX")
-	RAYDIUM_AUTHORITY = solana.MustPublicKeyFromBase58("5Q544fKrFoe6tsEbD7S8EmxGTJYAKtTVhAW5Q5pge4j1")
-	BLOXROUTE_MEMO    = solana.MustPublicKeyFromBase58("HQ2UUt18uJqKaQFJhgV9zaTdQxUZjNrsKFgoEDquBkcx")
-	BLOXROUTE_TIP     = solana.MustPublicKeyFromBase58("HWEoBxYs7ssKuudEjzjmpfJVX7Dvi7wescFsVx2L5yoY")
-	LAMPORTS_PER_SOL  = 1000000000
-	TA_RENT_LAMPORTS  = 2039280
-	TA_SIZE           = 165
-	BUY_METHOD        = "bloxroute"
-	SELL_METHOD       = "bloxroute" // "rpc", "bloxroute", "jito"
-	BLOCKENGINE_URL   = "https://amsterdam.mainnet.block-engine.jito.wtf"
-	GRPC1             = types.GrpcConfig{
+	WRAPPED_SOL                 = solana.MustPublicKeyFromBase58("So11111111111111111111111111111111111111112")
+	TOKEN_PROGRAM_ID            = solana.MustPublicKeyFromBase58("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA")
+	ASSOCIATED_TOKEN_PROGRAM_ID = solana.MustPublicKeyFromBase58("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL")
+	RAYDIUM_AMM_V4              = solana.MustPublicKeyFromBase58("675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8")
+	OPENBOOK_ID                 = solana.MustPublicKeyFromBase58("srmqPvymJeFKQ4zGQed1GFppgkRHL9kaELCbyksJtPX")
+	RAYDIUM_AUTHORITY           = solana.MustPublicKeyFromBase58("5Q544fKrFoe6tsEbD7S8EmxGTJYAKtTVhAW5Q5pge4j1")
+	BLOXROUTE_MEMO              = solana.MustPublicKeyFromBase58("HQ2UUt18uJqKaQFJhgV9zaTdQxUZjNrsKFgoEDquBkcx")
+	BLOXROUTE_TIP               = solana.MustPublicKeyFromBase58("HWEoBxYs7ssKuudEjzjmpfJVX7Dvi7wescFsVx2L5yoY")
+	LAMPORTS_PER_SOL            = 1000000000
+	TA_RENT_LAMPORTS            = 2039280
+	TA_SIZE                     = 165
+	BUY_METHOD                  = "bloxroute"
+	SELL_METHOD                 = "bloxroute" // "rpc", "bloxroute", "jito"
+	BLOCKENGINE_URL             = "https://amsterdam.mainnet.block-engine.jito.wtf"
+	GRPC1                       = types.GrpcConfig{
 		Addr:               "lineage-ams.rpcpool.com",
 		Token:              "390cc92f-d182-4400-a829-9524d8a9e23a",
 		InsecureConnection: false,

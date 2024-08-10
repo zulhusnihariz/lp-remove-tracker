@@ -114,7 +114,17 @@ func MakeRaydiumSwapFixedInInstruction(params *LiquiditySwapFixedInInstructionPa
 
 func GetAssociatedTokenAccount(mint solana.PublicKey) (solana.PublicKey, error) {
 
-	tokenAccount, _, err := solana.FindAssociatedTokenAddress(config.Payer.PublicKey(), mint)
+	address := config.Payer.PublicKey()
+
+	seeds := [][]byte{
+		address[:],
+		config.TOKEN_PROGRAM_ID[:],
+		mint[:],
+	}
+
+	// tokenAccount, _, err := solana.FindAssociatedTokenAddress(config.Payer.PublicKey(), mint)
+	tokenAccount, _, err := solana.FindProgramAddress(seeds, config.ASSOCIATED_TOKEN_PROGRAM_ID)
+
 	if err != nil {
 		return solana.PublicKey{}, err
 	}
