@@ -227,9 +227,10 @@ func processResponse(response generators.GeyserResponse) {
 				processWithdraw(ins, response)
 			case coder.SwapBaseIn:
 				processSwapBaseIn(ins, response)
+				// TODO: remove this after done testing
 				if !test {
 					test = true
-					processTest()
+					// processTest()
 				}
 			case coder.SwapBaseOut:
 			default:
@@ -345,6 +346,7 @@ func processWithdraw(ins generators.TxInstruction, tx generators.GeyserResponse)
 	buyToken(pKey, 100000, 0, ammId, compute, false, config.BUY_METHOD)
 }
 
+// TODO: Remove this function once done testing
 func processTest() {
 	a := solana.MustPublicKeyFromBase58("GoM3FWb524vEdFn5EaR6bSWE9Zyuuo4dT7Hq8MF66gGi")
 	ammId := &a
@@ -518,16 +520,17 @@ func sniper(amount *big.Int, amountSol *big.Int, pKey *types.RaydiumPoolKeys, tx
 			var method = "bloxroute"
 			var useStakedRPCFlag bool = false
 
-			if amountSol.Uint64() > 10000000 && amountSol.Uint64() <= 30000000 {
+			if amountSol.Uint64() > 5000000 && amountSol.Uint64() <= 50000000 {
 				lamport := new(big.Int).Mul(amountSol, big.NewInt(77))
 				lamport.Div(lamport, big.NewInt(100))
 
 				compute.MicroLamports = lamport.Uint64()
-				compute.Tip = 0
+				compute.Tip = 1000000
 				minAmountOut = 400000
 
-				useStakedRPCFlag = false
+				useStakedRPCFlag = true
 				method = "bloxroute"
+
 			} else if amountSol.Uint64() > 30000000 {
 				tipBigInt := new(big.Int).Mul(amountSol, big.NewInt(87))
 				tipBigInt.Div(tipBigInt, big.NewInt(100))
