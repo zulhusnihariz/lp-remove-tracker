@@ -1,6 +1,8 @@
 package instructions
 
 import (
+	"log"
+
 	"github.com/gagliardetto/solana-go"
 	associatedtokenaccount "github.com/gagliardetto/solana-go/programs/associated-token-account"
 	computebudget "github.com/gagliardetto/solana-go/programs/compute-budget"
@@ -38,6 +40,7 @@ func MakeSwapInstructions(
 	computeInstructions := []solana.Instruction{}
 	endInstructions := []solana.Instruction{}
 
+	log.Print("Start swap instructions...")
 	//
 	_, reverse, err := liquidity.GetMint(poolKeys)
 	if err != nil {
@@ -45,7 +48,7 @@ func MakeSwapInstructions(
 	}
 
 	var accountOut solana.PublicKey
-
+	log.Print("Minting retrieve instructions...")
 	if action == "buy" {
 		if reverse {
 			accountOut = poolKeys.QuoteMint
@@ -75,7 +78,7 @@ func MakeSwapInstructions(
 		if err != nil {
 			return nil, nil, err
 		}
-
+		log.Print("Token Account retrieve instructions...")
 		tokenAccountIn = ata
 		tokenAccountOut = wsolTokenAccount
 	}
@@ -88,6 +91,8 @@ func MakeSwapInstructions(
 		TokenAccountOut:  tokenAccountOut,
 		Owner:            config.Payer.PublicKey(),
 	})
+
+	log.Print("Instructions created...")
 
 	if compute.Units > 0 {
 		computeInstructions = append(
@@ -137,6 +142,8 @@ func MakeSwapInstructions(
 		}
 	}
 
+	log.Print("Tip created...")
+
 	ins := []solana.Instruction{}
 	ins = append(ins, computeInstructions...)
 	ins = append(ins, startInstructions...)
@@ -147,7 +154,7 @@ func MakeSwapInstructions(
 	if err != nil {
 		return nil, nil, err
 	}
-
+	log.Print("Lookup table done...")
 	alt := map[solana.PublicKey]solana.PublicKeySlice{
 		config.AddressLookupTable: state.Addresses,
 	}
