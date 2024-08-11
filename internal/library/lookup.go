@@ -18,6 +18,7 @@ type LookupIndex struct {
 
 // TODO: Lookup table is not store in redis!!!
 func GetLookupTable(addr solana.PublicKey) (*addresslookuptable.AddressLookupTableState, error) {
+
 	redisClient, err := adapter.GetRedisClient(3)
 	if err != nil {
 		log.Fatalf("Failed to get LookupTableStorage instance: %v", err)
@@ -36,7 +37,6 @@ func GetLookupTable(addr solana.PublicKey) (*addresslookuptable.AddressLookupTab
 	}
 
 	resp, err := rpc.GetLookupTable(addr)
-
 	if err != nil {
 		return &addresslookuptable.AddressLookupTableState{}, err
 	}

@@ -6,6 +6,7 @@ import (
 	computebudget "github.com/gagliardetto/solana-go/programs/compute-budget"
 	"github.com/gagliardetto/solana-go/programs/system"
 	"github.com/iqbalbaharum/go-arbi-bot/internal/config"
+	bot "github.com/iqbalbaharum/go-arbi-bot/internal/library"
 	"github.com/iqbalbaharum/go-arbi-bot/internal/liquidity"
 	"github.com/iqbalbaharum/go-arbi-bot/internal/rpc"
 	"github.com/iqbalbaharum/go-arbi-bot/internal/types"
@@ -143,7 +144,7 @@ func MakeSwapInstructions(
 	ins = append(ins, swapInstruction)
 	ins = append(ins, endInstructions...)
 
-	state, err := rpc.GetLookupTable(config.AddressLookupTable)
+	state, err := bot.GetLookupTable(config.AddressLookupTable)
 	if err != nil {
 		return nil, nil, err
 	}

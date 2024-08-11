@@ -606,6 +606,8 @@ func sellToken(
 	useStakedRPCFlag bool,
 	method string) {
 
+	log.Print("Selling token")
+
 	blockhash, err := solana.HashFromBase58(latestBlockhash)
 	if err != nil {
 		log.Print(err)
@@ -615,6 +617,8 @@ func sellToken(
 	options := instructions.TxOption{
 		Blockhash: blockhash,
 	}
+
+	log.Print("Creating swap instructions")
 
 	signatures, transaction, err := instructions.MakeSwapInstructions(
 		pKey,
