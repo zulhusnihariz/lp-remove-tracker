@@ -172,7 +172,6 @@ func SendBatchTransactions(transactions []*solana.Transaction) error {
 			},
 		}
 
-		CallRPC("sendTransaction", params)
 		CallRPC("sendTransaction", params, advancedRpc)
 	}
 

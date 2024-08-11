@@ -22,6 +22,7 @@ func NewWSClient(url string, auth string) (*WSClient, error) {
 	Conn, _, err := websocket.DefaultDialer.Dial(url, http.Header{
 		"Authorization": {auth},
 	})
+	defer Conn.Close()
 
 	if err != nil {
 		return nil, err

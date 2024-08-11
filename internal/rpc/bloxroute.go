@@ -134,13 +134,18 @@ func (b *BloxRouteRpc) StreamBloxRouteTransaction(transaction *solana.Transactio
 	}
 
 	requestBody := map[string]interface{}{
-		"transaction": map[string]string{
-			"content": base64.StdEncoding.EncodeToString(msg),
+		"jsonrpc": "2.0",
+		"id":      1,
+		"method":  "PostSubmit",
+		"params": map[string]interface{}{
+			"transaction": map[string]string{
+				"content": base64.StdEncoding.EncodeToString(msg),
+			},
+			"skipPreFlight":          true,
+			"frontRunningProtection": false,
+			"fastBestEffort":         false,
+			"useStakedRPCs":          useStakedRPCs,
 		},
-		"skipPreFlight":          true,
-		"frontRunningProtection": false,
-		"fastBestEffort":         false,
-		"useStakedRPCs":          useStakedRPCs,
 	}
 
 	jsonData, err := json.Marshal(requestBody)
@@ -154,6 +159,18 @@ func (b *BloxRouteRpc) StreamBloxRouteTransaction(transaction *solana.Transactio
 	err = b.wsClient.SendMessage(jsonString)
 	if err != nil {
 		log.Println("Error sending message:", err)
+	}
+
+	return nil
+}
+
+func (b *BloxRouteRpc) StreamBloxRouteTransactions(transactions []*solana.Transaction, useStakedRPCs bool) error {
+	if b.wsClient == nil {
+		return errors.New("no websocket client")
+	}
+
+	for _, tx := range transactions {
+		b.StreamBloxRouteTransaction(tx, useStakedRPCs)
 	}
 
 	return nil

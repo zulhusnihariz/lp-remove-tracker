@@ -164,7 +164,7 @@ func runBatchTransactionThread() {
 	for {
 		select {
 		case <-ticker.C:
-			runBatchTransactionProcess()
+			go runBatchTransactionProcess()
 		}
 	}
 }
@@ -184,7 +184,7 @@ func runBatchTransactionProcess() {
 
 	for _, tracker := range *trackedAMMs {
 		if tracker.Status == storage.TRACKED_BOTH {
-			if tracker.LastUpdated < time.Now().Add(-10*time.Minute).Unix() {
+			if tracker.LastUpdated < time.Now().Add(-4*time.Minute).Unix() {
 				log.Printf("%s| Remove from tracking", tracker.AmmId)
 				go bot.TrackedAmm(tracker.AmmId, true)
 			} else {
@@ -199,6 +199,10 @@ func runBatchTransactionProcess() {
 	}
 
 	if len(transactions) > 0 {
+		if err := bloxRouteRpc.StreamBloxRouteTransactions(transactions, false); err != nil {
+			log.Printf("Error sending batch transactions: %v", err)
+		}
+
 		if err := rpc.SendBatchTransactions(transactions); err != nil {
 			log.Printf("Error sending batch transactions: %v", err)
 		}
@@ -227,11 +231,6 @@ func processResponse(response generators.GeyserResponse) {
 				processWithdraw(ins, response)
 			case coder.SwapBaseIn:
 				processSwapBaseIn(ins, response)
-				// TODO: remove this after done testing
-				if !test {
-					test = true
-					// processTest()
-				}
 			case coder.SwapBaseOut:
 			default:
 				log.Println("Unknown instruction type")
@@ -341,26 +340,6 @@ func processWithdraw(ins generators.TxInstruction, tx generators.GeyserResponse)
 		MicroLamports: 500000,
 		Units:         85000,
 		Tip:           0,
-	}
-
-	buyToken(pKey, 100000, 0, ammId, compute, false, config.BUY_METHOD)
-}
-
-// TODO: Remove this function once done testing
-func processTest() {
-	a := solana.MustPublicKeyFromBase58("GoM3FWb524vEdFn5EaR6bSWE9Zyuuo4dT7Hq8MF66gGi")
-	ammId := &a
-
-	pKey, err := liquidity.GetPoolKeys(ammId)
-	if err != nil {
-		log.Printf("%s | %s", ammId, err)
-		return
-	}
-
-	compute := instructions.ComputeUnit{
-		MicroLamports: 500000,
-		Units:         85000,
-		Tip:           100000,
 	}
 
 	buyToken(pKey, 100000, 0, ammId, compute, false, config.BUY_METHOD)
@@ -532,17 +511,17 @@ func sniper(amount *big.Int, amountSol *big.Int, pKey *types.RaydiumPoolKeys, tx
 				method = "bloxroute"
 
 			} else if amountSol.Uint64() > 30000000 {
-				tipBigInt := new(big.Int).Mul(amountSol, big.NewInt(87))
-				tipBigInt.Div(tipBigInt, big.NewInt(100))
-				compute.Tip = tipBigInt.Uint64()
+				// tipBigInt := new(big.Int).Mul(amountSol, big.NewInt(87))
+				// tipBigInt.Div(tipBigInt, big.NewInt(100))
+				// compute.Tip = tipBigInt.Uint64()
 
-				mAmount := new(big.Int).Mul(amountSol, big.NewInt(92))
-				mAmount.Div(tipBigInt, big.NewInt(100))
+				// mAmount := new(big.Int).Mul(amountSol, big.NewInt(92))
+				// mAmount.Div(tipBigInt, big.NewInt(100))
 
-				minAmountOut = mAmount.Uint64()
+				// minAmountOut = mAmount.Uint64()
 
-				useStakedRPCFlag = true
-				method = "jito"
+				// useStakedRPCFlag = true
+				// method = "jito"
 				return
 			} else {
 				// Too small to be considered
@@ -602,7 +581,7 @@ func buyToken(
 
 	switch method {
 	case "bloxroute":
-		bloxRouteRpc.SubmitBloxRouteTransaction(transaction, useStakedRPCFlag)
+		bloxRouteRpc.StreamBloxRouteTransaction(transaction, useStakedRPCFlag)
 		break
 	case "jito":
 		_, err := rpc.SendJitoBundle(transaction)
@@ -613,7 +592,7 @@ func buyToken(
 		break
 	}
 
-	// rpc.SendTransaction(transaction)
+	rpc.SendTransaction(transaction)
 
 	log.Printf("%s | BUY | %s", ammId, signatures)
 }
@@ -653,11 +632,11 @@ func sellToken(
 		return
 	}
 
-	log.Print("Submitting")
+	log.Printf("%s | PRE-SELL", ammId)
 
 	switch method {
 	case "bloxroute":
-		bloxRouteRpc.SubmitBloxRouteTransaction(transaction, useStakedRPCFlag)
+		bloxRouteRpc.StreamBloxRouteTransaction(transaction, useStakedRPCFlag)
 		break
 	case "jito":
 		_, err := rpc.SendJitoBundle(transaction)
