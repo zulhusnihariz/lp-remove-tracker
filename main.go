@@ -499,8 +499,19 @@ func sniper(amount *big.Int, amountSol *big.Int, pKey *types.RaydiumPoolKeys, tx
 			var method = "bloxroute"
 			var useStakedRPCFlag bool = false
 
-			if amountSol.Uint64() > 5000000 && amountSol.Uint64() <= 50000000 {
+			if amountSol.Uint64() > 5000000 && amountSol.Uint64() <= 30000000 {
 				lamport := new(big.Int).Mul(amountSol, big.NewInt(77))
+				lamport.Div(lamport, big.NewInt(100))
+
+				compute.MicroLamports = lamport.Uint64()
+				compute.Tip = 1000000
+				minAmountOut = 400000
+
+				useStakedRPCFlag = true
+				method = "bloxroute"
+
+			} else if amountSol.Uint64() > 30000000 && amountSol.Uint64() <= 50000000 {
+				lamport := new(big.Int).Mul(amountSol, big.NewInt(57))
 				lamport.Div(lamport, big.NewInt(100))
 
 				compute.MicroLamports = lamport.Uint64()
