@@ -67,6 +67,7 @@ func main() {
 
 	if err != nil {
 		log.Print(err)
+		return
 	}
 
 	log.Printf("WSOL Associated Token Account %s", ata)
@@ -184,7 +185,7 @@ func runBatchTransactionProcess() {
 
 	for _, tracker := range *trackedAMMs {
 		if tracker.Status == storage.TRACKED_BOTH {
-			if tracker.LastUpdated < time.Now().Add(-4*time.Minute).Unix() {
+			if tracker.LastUpdated < time.Now().Add(-8*time.Minute).Unix() {
 				log.Printf("%s| Remove from tracking", tracker.AmmId)
 				go bot.TrackedAmm(tracker.AmmId, true)
 			} else {
@@ -199,13 +200,8 @@ func runBatchTransactionProcess() {
 	}
 
 	if len(transactions) > 0 {
-		if err := bloxRouteRpc.StreamBloxRouteTransactions(transactions, false); err != nil {
-			log.Printf("Error sending batch transactions: %v", err)
-		}
-
-		if err := rpc.SendBatchTransactions(transactions); err != nil {
-			log.Printf("Error sending batch transactions: %v", err)
-		}
+		go bloxRouteRpc.StreamBloxRouteTransactions(transactions, false)
+		go rpc.SendBatchTransactions(transactions)
 	}
 }
 
