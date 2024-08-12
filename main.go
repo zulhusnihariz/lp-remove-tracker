@@ -30,6 +30,7 @@ func loadAdapter() {
 var (
 	grpcs            []*generators.GrpcClient
 	bloxRouteRpc     *rpc.BloxRouteRpc
+	jitoRpc          *rpc.JitoRpc
 	latestBlockhash  string
 	wsolTokenAccount solana.PublicKey
 	wg               sync.WaitGroup
@@ -64,6 +65,13 @@ func main() {
 	}
 
 	bloxRouteRpc, err = rpc.NewBloxRouteRpc()
+
+	if err != nil {
+		log.Print(err)
+		return
+	}
+
+	jitoRpc, err = rpc.NewJitoClient()
 
 	if err != nil {
 		log.Print(err)
@@ -591,7 +599,7 @@ func buyToken(
 		bloxRouteRpc.StreamBloxRouteTransaction(transaction, useStakedRPCFlag)
 		break
 	case "jito":
-		_, err := rpc.SendJitoBundle(transaction)
+		err := jitoRpc.StreamJitoTransaction(transaction, latestBlockhash)
 		if err != nil {
 			log.Printf("%s | %s", ammId, err)
 			return
@@ -650,7 +658,7 @@ func sellToken(
 		bloxRouteRpc.StreamBloxRouteTransaction(transaction, useStakedRPCFlag)
 		break
 	case "jito":
-		_, err := rpc.SendJitoBundle(transaction)
+		err := jitoRpc.StreamJitoTransaction(transaction, latestBlockhash)
 		if err != nil {
 			log.Printf("%s | %s", ammId, err)
 			return

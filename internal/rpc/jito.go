@@ -3,14 +3,18 @@ package rpc
 import (
 	"bytes"
 	"compress/gzip"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/gagliardetto/solana-go"
+	solanaRpc "github.com/gagliardetto/solana-go/rpc"
 	"github.com/iqbalbaharum/go-arbi-bot/internal/config"
 	"github.com/mr-tron/base58"
+	jito_go "github.com/weeaa/jito-go"
+	searcher_client "github.com/weeaa/jito-go/clients/searcher_client"
 )
 
 type JitoRequestBody struct {
@@ -31,6 +35,42 @@ type JitoResponseBody struct {
 type JitoErrorResponse struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`
+}
+
+type JitoRpc struct {
+	client *searcher_client.Client
+}
+
+func NewJitoClient() (*JitoRpc, error) {
+	ctx := context.Background()
+
+	client, err := searcher_client.New(
+		ctx,
+		jito_go.Amsterdam.BlockEngineURL,
+		solanaRpc.New(jito_go.Amsterdam.BlockEngineURL),
+		solanaRpc.New(config.RpcHttpUrl),
+		config.Payer.PrivateKey,
+		nil)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &JitoRpc{
+		client: client,
+	}, nil
+}
+
+func (j *JitoRpc) StreamJitoTransaction(transaction *solana.Transaction, recentBlockhash string) error {
+	txns := make([]*solana.Transaction, 0, 1)
+
+	txns = append(txns, transaction)
+	_, err := j.client.BroadcastBundle(txns)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func SendJitoTransaction(transaction *solana.Transaction) (*JitoResponseBody, error) {
