@@ -9,7 +9,6 @@ require (
 	github.com/joho/godotenv v1.5.1
 	github.com/mr-tron/base58 v1.2.0
 	github.com/redis/go-redis/v9 v9.5.4
-	github.com/rpcpool/yellowstone-grpc/examples/golang v0.0.0-20240712191521-af7ee3072e5a
 	github.com/weeaa/jito-go v0.0.0-20240809205054-007d6a8ee799
 	go.uber.org/automaxprocs v1.5.3
 	google.golang.org/grpc v1.65.0
@@ -25,6 +24,7 @@ require (
 	github.com/fatih/color v1.17.0 // indirect
 	github.com/gagliardetto/treeout v0.1.4 // indirect
 	github.com/google/uuid v1.6.0 // indirect
+	github.com/iqbalbaharum/solana-protos v1.0.1-0.20240812112918-e1172625c146 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/klauspost/compress v1.17.9 // indirect
 	github.com/logrusorgru/aurora v2.0.3+incompatible // indirect

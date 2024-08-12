@@ -11,6 +11,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gagliardetto/solana-go"
@@ -24,6 +25,7 @@ type BloxRouteResponse struct {
 
 type BloxRouteRpc struct {
 	wsClient *generators.WSClient
+	mutex    sync.Mutex
 }
 
 func NewBloxRouteRpc() (*BloxRouteRpc, error) {
@@ -127,6 +129,9 @@ func (b *BloxRouteRpc) StreamBloxRouteTransaction(transaction *solana.Transactio
 		return errors.New("no websocket client")
 	}
 
+	b.mutex.Lock()
+	defer b.mutex.Unlock()
+
 	msg, err := transaction.MarshalBinary()
 
 	if err != nil {
@@ -169,8 +174,47 @@ func (b *BloxRouteRpc) StreamBloxRouteTransactions(transactions []*solana.Transa
 		return errors.New("no websocket client")
 	}
 
-	for _, tx := range transactions {
-		b.StreamBloxRouteTransaction(tx, useStakedRPCs)
+	var entries []map[string]interface{}
+
+	b.mutex.Lock()
+	defer b.mutex.Unlock()
+
+	for _, transaction := range transactions {
+		msg, err := transaction.MarshalBinary()
+		if err != nil {
+			return err
+		}
+
+		entry := map[string]interface{}{
+			"transaction": map[string]string{
+				"content": base64.StdEncoding.EncodeToString(msg),
+			},
+			"skipPreFlight": true,
+		}
+		entries = append(entries, entry)
+	}
+
+	requestBody := map[string]interface{}{
+		"jsonrpc": "2.0",
+		"id":      1,
+		"method":  "PostSubmit",
+		"params": map[string]interface{}{
+			"entries":        entries,
+			"submitStrategy": "P_UNKNOWN",
+		},
+	}
+
+	jsonData, err := json.Marshal(requestBody)
+	if err != nil {
+		return err
+	}
+
+	// Convert jsonData to string
+	jsonString := string(jsonData)
+
+	err = b.wsClient.SendMessage(jsonString)
+	if err != nil {
+		log.Println("Error sending message:", err)
 	}
 
 	return nil

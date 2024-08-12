@@ -26,7 +26,7 @@ var (
 	LAMPORTS_PER_SOL            = 1000000000
 	TA_RENT_LAMPORTS            = 2039280
 	TA_SIZE                     = 165
-	BUY_METHOD                  = "jito"
+	BUY_METHOD                  = "bloxroute"
 	SELL_METHOD                 = "bloxroute" // "rpc", "bloxroute", "jito"
 	BLOCKENGINE_URL             = "https://amsterdam.mainnet.block-engine.jito.wtf"
 	GRPC1                       = types.GrpcConfig{
@@ -58,6 +58,7 @@ var (
 	ChunkSplitter        int64
 	MachineGunMinTrigger int64
 	BuyDelay             int64
+	JitoAuthPrivateKey   *solana.Wallet
 )
 
 func InitEnv() error {
@@ -83,6 +84,13 @@ func InitEnv() error {
 	BloxRouteUrl = os.Getenv("BLOXROUTE_URL")
 	BloxRouteWsUrl = os.Getenv("BLOXROUTE_WS_URL")
 	BloxRouteToken = os.Getenv("BLOXROUTE_TOKEN")
+
+	jitoAuth, e := solana.WalletFromPrivateKeyBase58(os.Getenv("JITO_AUTH_PRIVATE_KEY"))
+	if e != nil {
+		return e
+	}
+
+	JitoAuthPrivateKey = jitoAuth
 
 	var err error
 	txInterval, err := strconv.Atoi(os.Getenv("TX_INTERVAL"))

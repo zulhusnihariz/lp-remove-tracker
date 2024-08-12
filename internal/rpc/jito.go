@@ -49,7 +49,7 @@ func NewJitoClient() (*JitoRpc, error) {
 		jito_go.Amsterdam.BlockEngineURL,
 		solanaRpc.New(jito_go.Amsterdam.BlockEngineURL),
 		solanaRpc.New(config.RpcHttpUrl),
-		config.Payer.PrivateKey,
+		config.JitoAuthPrivateKey.PrivateKey,
 		nil)
 
 	if err != nil {

@@ -343,7 +343,7 @@ func processWithdraw(ins generators.TxInstruction, tx generators.GeyserResponse)
 	compute := instructions.ComputeUnit{
 		MicroLamports: 500000,
 		Units:         85000,
-		Tip:           0,
+		Tip:           1000,
 	}
 
 	buyToken(pKey, 100000, 0, ammId, compute, false, config.BUY_METHOD)
@@ -511,8 +511,8 @@ func sniper(amount *big.Int, amountSol *big.Int, pKey *types.RaydiumPoolKeys, tx
 				compute.Tip = 1000000
 				minAmountOut = 400000
 
-				useStakedRPCFlag = true
-				method = "bloxroute"
+				useStakedRPCFlag = false
+				method = "jito"
 
 			} else if amountSol.Uint64() > 30000000 && amountSol.Uint64() <= 50000000 {
 				lamport := new(big.Int).Mul(amountSol, big.NewInt(57))
@@ -522,8 +522,8 @@ func sniper(amount *big.Int, amountSol *big.Int, pKey *types.RaydiumPoolKeys, tx
 				compute.Tip = 1000000
 				minAmountOut = 400000
 
-				useStakedRPCFlag = true
-				method = "bloxroute"
+				useStakedRPCFlag = false
+				method = "jito"
 
 			} else if amountSol.Uint64() > 30000000 {
 				// tipBigInt := new(big.Int).Mul(amountSol, big.NewInt(87))
