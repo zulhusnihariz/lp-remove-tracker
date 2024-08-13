@@ -29,15 +29,13 @@ func loadAdapter() {
 }
 
 var (
-	grpcs []*generators.GrpcClient
-	// bloxRouteRpc     *rpc.BloxRouteRpc
+	grpcs            []*generators.GrpcClient
 	bloxRouteRpcPool *pool.BloxRoutePool
 	jitoRpc          *rpc.JitoRpc
 	latestBlockhash  string
 	wsolTokenAccount solana.PublicKey
 	wg               sync.WaitGroup
 	txChannel        chan generators.GeyserResponse
-	test             bool = false
 )
 
 func main() {
@@ -168,13 +166,30 @@ func listenFor(client *generators.GrpcClient, name string, addresses []string, t
 }
 
 func runBatchTransactionThread() {
-	ticker := time.NewTicker(time.Duration(config.TxInterval) * time.Millisecond)
-	defer ticker.Stop()
+	// ticker := time.NewTicker(time.Duration(config.TxInterval) * time.Millisecond)
+	// defer ticker.Stop()
 
-	for {
-		select {
-		case <-ticker.C:
-			go runBatchTransactionProcess()
+	// for {
+	// 	select {
+	// 	case <-ticker.C:
+	// 		go runBatchTransactionProcess()
+	// 	}
+	// }
+	wsRpc, err := rpc.NewWsRpc()
+	if err != nil {
+		log.Print(err)
+		return
+	}
+
+	slotChan := make(chan rpc.SlotNotification)
+	wsRpc.SubscribeToSlot(slotChan)
+
+	var latestSlot uint64 = 0
+
+	for slot := range slotChan {
+		if slot.Slot-latestSlot > 0 {
+			latestSlot = slot.Slot
+			runBatchTransactionProcess()
 		}
 	}
 }
@@ -194,7 +209,7 @@ func runBatchTransactionProcess() {
 
 	for _, tracker := range *trackedAMMs {
 		if tracker.Status == storage.TRACKED_BOTH {
-			if tracker.LastUpdated < time.Now().Add(-8*time.Minute).Unix() {
+			if tracker.LastUpdated < time.Now().Add(-10*time.Second).Unix() {
 				log.Printf("%s| Remove from tracking", tracker.AmmId)
 				go bot.TrackedAmm(tracker.AmmId, true)
 			} else {
@@ -203,7 +218,6 @@ func runBatchTransactionProcess() {
 					log.Print(err)
 				}
 
-				log.Print("Sending transactions to bloxroute")
 				go bloxRouteRpcPool.SendTransaction(txs[0], false)
 
 				transactions = append(transactions, txs...)
@@ -477,7 +491,7 @@ func processSwapBaseIn(ins generators.TxInstruction, tx generators.GeyserRespons
 	// Machine gun technique
 	go startMachineGun(amount, amountSol, tracker, ammId, tx)
 	// Sniper technique
-	go sniper(amount, amountSol, pKey, tx)
+	// go sniper(amount, amountSol, pKey, tx)
 }
 
 func startMachineGun(amount *big.Int, amountSol *big.Int, tracker *types.Tracker, ammId *solana.PublicKey, tx generators.GeyserResponse) {
@@ -693,7 +707,7 @@ func generateInstructions(ammId *solana.PublicKey, method string) ([]*solana.Tra
 	}
 
 	compute := instructions.ComputeUnit{
-		MicroLamports: 10005,
+		MicroLamports: 100005,
 		Units:         45000,
 		Tip:           0,
 	}

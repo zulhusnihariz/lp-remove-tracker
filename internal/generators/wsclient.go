@@ -35,7 +35,7 @@ func NewWSClient(url string, auth string) (*WSClient, error) {
 		done: make(chan struct{}),
 	}
 
-	go client.listenMessages()
+	// go client.listenMessages()
 
 	return client, nil
 }
@@ -82,17 +82,28 @@ func (c *WSClient) SendMessage(message string) error {
 	return nil
 }
 
-func (c *WSClient) ReadMessages() {
+func (c *WSClient) ReadMessages(messageChan chan<- []byte) {
 	for {
 		_, message, err := c.Conn.ReadMessage()
 		if err != nil {
+			// If the connection is closed unexpectedly, try to reconnect
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				log.Printf("error: %v", err)
+				log.Printf("Error: %v. Attempting to reconnect...", err)
+				err := c.reConnect()
+				if err != nil {
+					log.Printf("Reconnection failed: %v", err)
+					return
+				}
+				log.Println("Reconnected successfully. Resuming message reading...")
+				continue
 			}
+			// log.Printf("Error reading message: %v", err)
 			return
 		}
 
-		log.Print(message)
+		if messageChan != nil {
+			messageChan <- message
+		}
 	}
 }
 
