@@ -18,6 +18,7 @@ import (
 	instructions "github.com/iqbalbaharum/go-arbi-bot/internal/instructions"
 	bot "github.com/iqbalbaharum/go-arbi-bot/internal/library"
 	"github.com/iqbalbaharum/go-arbi-bot/internal/liquidity"
+	"github.com/iqbalbaharum/go-arbi-bot/internal/pool"
 	"github.com/iqbalbaharum/go-arbi-bot/internal/rpc"
 	"github.com/iqbalbaharum/go-arbi-bot/internal/storage"
 	"github.com/iqbalbaharum/go-arbi-bot/internal/types"
@@ -28,8 +29,9 @@ func loadAdapter() {
 }
 
 var (
-	grpcs            []*generators.GrpcClient
-	bloxRouteRpc     *rpc.BloxRouteRpc
+	grpcs []*generators.GrpcClient
+	// bloxRouteRpc     *rpc.BloxRouteRpc
+	bloxRouteRpcPool *pool.BloxRoutePool
 	jitoRpc          *rpc.JitoRpc
 	latestBlockhash  string
 	wsolTokenAccount solana.PublicKey
@@ -64,8 +66,7 @@ func main() {
 		return
 	}
 
-	bloxRouteRpc, err = rpc.NewBloxRouteRpc()
-
+	bloxRouteRpcPool, err = pool.NewBloxRoutePool(numCPU)
 	if err != nil {
 		log.Print(err)
 		return
@@ -119,10 +120,10 @@ func main() {
 	}()
 
 	wg.Add(1)
-	go func() {
-		wsClient := bloxRouteRpc.GetWsConnection()
-		wsClient.ReadMessages()
-	}()
+	// go func() {
+	// 	wsClient := bloxRouteRpc.GetWsConnection()
+	// 	wsClient.ReadMessages()
+	// }()
 
 	listenFor(
 		grpcs[0],
@@ -202,13 +203,15 @@ func runBatchTransactionProcess() {
 					log.Print(err)
 				}
 
+				log.Print("Sending transactions to bloxroute")
+				go bloxRouteRpcPool.SendTransaction(txs[0], false)
+
 				transactions = append(transactions, txs...)
 			}
 		}
 	}
 
 	if len(transactions) > 0 {
-		go bloxRouteRpc.StreamBloxRouteTransactions(transactions, false)
 		go rpc.SendBatchTransactions(transactions)
 	}
 }
@@ -596,7 +599,7 @@ func buyToken(
 
 	switch method {
 	case "bloxroute":
-		bloxRouteRpc.StreamBloxRouteTransaction(transaction, useStakedRPCFlag)
+		bloxRouteRpcPool.SendTransaction(transaction, useStakedRPCFlag)
 		break
 	case "jito":
 		err := jitoRpc.StreamJitoTransaction(transaction, latestBlockhash)
@@ -655,7 +658,7 @@ func sellToken(
 
 	switch method {
 	case "bloxroute":
-		bloxRouteRpc.StreamBloxRouteTransaction(transaction, useStakedRPCFlag)
+		bloxRouteRpcPool.SendTransaction(transaction, useStakedRPCFlag)
 		break
 	case "jito":
 		err := jitoRpc.StreamJitoTransaction(transaction, latestBlockhash)
@@ -690,7 +693,7 @@ func generateInstructions(ammId *solana.PublicKey, method string) ([]*solana.Tra
 	}
 
 	compute := instructions.ComputeUnit{
-		MicroLamports: 1005,
+		MicroLamports: 10005,
 		Units:         45000,
 		Tip:           0,
 	}
