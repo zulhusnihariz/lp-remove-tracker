@@ -80,10 +80,14 @@ func main() {
 	log.Printf("WSOL Associated Token Account %s", ata)
 	wsolTokenAccount = *ata
 
-	client, err := generators.GrpcConnect(config.GRPC1.Addr, config.GRPC1.InsecureConnection)
-	client2, err := generators.GrpcConnect(config.GRPC2.Addr, config.GRPC2.InsecureConnection)
+	// client, err := generators.GrpcConnect(config.GRPC1.Addr, config.GRPC1.InsecureConnection)
+	// client2, err := generators.GrpcConnect(config.GRPC2.Addr, config.GRPC2.InsecureConnection)
 
-	grpcs = append(grpcs, client, client2)
+	// grpcs = append(grpcs, client, client2)
+	client, err := generators.GrpcConnect(config.GRPC1.Addr, config.GRPC1.InsecureConnection)
+
+	grpcs = append(grpcs, client)
+
 	if err != nil {
 		log.Fatalf("Error in GRPC connection: %s ", err)
 		return
@@ -117,12 +121,7 @@ func main() {
 		runBatchTransactionThread()
 	}()
 
-	wg.Add(1)
-	// go func() {
-	// 	wsClient := bloxRouteRpc.GetWsConnection()
-	// 	wsClient.ReadMessages()
-	// }()
-
+	// wg.Add(1)
 	listenFor(
 		grpcs[0],
 		"triton",
@@ -130,12 +129,12 @@ func main() {
 			config.RAYDIUM_AMM_V4.String(),
 		}, txChannel, &wg)
 
-	listenFor(
-		grpcs[1],
-		"solana-tracker",
-		[]string{
-			config.RAYDIUM_AMM_V4.String(),
-		}, txChannel, &wg)
+	// listenFor(
+	// 	grpcs[1],
+	// 	"solana-tracker",
+	// 	[]string{
+	// 		config.RAYDIUM_AMM_V4.String(),
+	// 	}, txChannel, &wg)
 
 	wg.Wait()
 
@@ -491,7 +490,7 @@ func processSwapBaseIn(ins generators.TxInstruction, tx generators.GeyserRespons
 	// Machine gun technique
 	go startMachineGun(amount, amountSol, tracker, ammId, tx)
 	// Sniper technique
-	// go sniper(amount, amountSol, pKey, tx)
+	go sniper(amount, amountSol, pKey, tx)
 }
 
 func startMachineGun(amount *big.Int, amountSol *big.Int, tracker *types.Tracker, ammId *solana.PublicKey, tx generators.GeyserResponse) {
