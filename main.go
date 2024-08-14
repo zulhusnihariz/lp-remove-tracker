@@ -491,7 +491,7 @@ func processSwapBaseIn(ins generators.TxInstruction, tx generators.GeyserRespons
 	// Machine gun technique
 	go startMachineGun(amount, amountSol, tracker, ammId, tx)
 	// Sniper technique
-	go sniper(amount, amountSol, pKey, tx)
+	// go sniper(amount, amountSol, pKey, tx)
 }
 
 func startMachineGun(amount *big.Int, amountSol *big.Int, tracker *types.Tracker, ammId *solana.PublicKey, tx generators.GeyserResponse) {
