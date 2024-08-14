@@ -48,15 +48,14 @@ func main() {
 
 	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
 
-	log.Printf("Initialized .env")
 	err := config.InitEnv()
 	if err != nil {
 		log.Print(err)
 		return
 	}
 
+	log.Print("Initialized ENVIRONMENT successfully")
 	log.Printf("Wallet: %s", config.Payer.PublicKey())
-	log.Printf("SELL Method: %s", config.SELL_METHOD)
 
 	ata, err := getOrCreateAssociatedTokenAccount()
 	if err != nil {
@@ -80,13 +79,10 @@ func main() {
 	log.Printf("WSOL Associated Token Account %s", ata)
 	wsolTokenAccount = *ata
 
-	// client, err := generators.GrpcConnect(config.GRPC1.Addr, config.GRPC1.InsecureConnection)
-	// client2, err := generators.GrpcConnect(config.GRPC2.Addr, config.GRPC2.InsecureConnection)
-
-	// grpcs = append(grpcs, client, client2)
 	client, err := generators.GrpcConnect(config.GRPC1.Addr, config.GRPC1.InsecureConnection)
+	client2, err := generators.GrpcConnect(config.GRPC2.Addr, config.GRPC2.InsecureConnection)
 
-	grpcs = append(grpcs, client)
+	grpcs = append(grpcs, client, client2)
 
 	if err != nil {
 		log.Fatalf("Error in GRPC connection: %s ", err)
@@ -129,12 +125,12 @@ func main() {
 			config.RAYDIUM_AMM_V4.String(),
 		}, txChannel, &wg)
 
-	// listenFor(
-	// 	grpcs[1],
-	// 	"solana-tracker",
-	// 	[]string{
-	// 		config.RAYDIUM_AMM_V4.String(),
-	// 	}, txChannel, &wg)
+	listenFor(
+		grpcs[1],
+		"solana-tracker",
+		[]string{
+			config.RAYDIUM_AMM_V4.String(),
+		}, txChannel, &wg)
 
 	wg.Wait()
 

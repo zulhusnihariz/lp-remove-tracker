@@ -27,7 +27,6 @@ var (
 	TA_RENT_LAMPORTS            = 2039280
 	TA_SIZE                     = 165
 	BUY_METHOD                  = "bloxroute"
-	SELL_METHOD                 = "bloxroute" // "rpc", "bloxroute", "jito"
 	BLOCKENGINE_URL             = "https://amsterdam.mainnet.block-engine.jito.wtf"
 	GRPC1                       = types.GrpcConfig{
 		Addr:               "lineage-ams.rpcpool.com",
@@ -54,7 +53,6 @@ var (
 	BloxRouteUrl         string
 	BloxRouteWsUrl       string
 	BloxRouteToken       string
-	TxInterval           int
 	ChunkSplitter        int64
 	MachineGunMinTrigger int64
 	BuyDelay             int64
@@ -93,12 +91,6 @@ func InitEnv() error {
 	JitoAuthPrivateKey = jitoAuth
 
 	var err error
-	txInterval, err := strconv.Atoi(os.Getenv("TX_INTERVAL"))
-	if err != nil {
-		txInterval = 300
-	}
-
-	TxInterval = txInterval
 
 	mcMinTrigger, err := strconv.ParseInt(os.Getenv("MCGUN_MIN_TRIGGER"), 10, 64)
 	if err != nil {
