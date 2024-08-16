@@ -204,7 +204,7 @@ func runBatchTransactionProcess() {
 
 	for _, tracker := range *trackedAMMs {
 		if tracker.Status == storage.TRACKED_BOTH {
-			if tracker.LastUpdated < time.Now().Add(-30*time.Second).Unix() {
+			if tracker.LastUpdated < time.Now().Add(-300*time.Second).Unix() {
 				log.Printf("%s| Remove from tracking", tracker.AmmId)
 				go bot.TrackedAmm(tracker.AmmId, true)
 			} else {
@@ -702,7 +702,7 @@ func generateInstructions(ammId *solana.PublicKey, method string) ([]*solana.Tra
 	}
 
 	compute := instructions.ComputeUnit{
-		MicroLamports: 100005,
+		MicroLamports: 40040,
 		Units:         45000,
 		Tip:           0,
 	}
