@@ -512,7 +512,7 @@ func sniper(amount *big.Int, amountSol *big.Int, pKey *types.RaydiumPoolKeys, tx
 			}
 
 			var minAmountOut uint64
-			var method = "bloxroute"
+			var method = "rpc"
 			var useStakedRPCFlag bool = false
 
 			if amountSol.Uint64() > 5000000 && amountSol.Uint64() <= 30000000 {
@@ -524,7 +524,7 @@ func sniper(amount *big.Int, amountSol *big.Int, pKey *types.RaydiumPoolKeys, tx
 				minAmountOut = 400000
 
 				useStakedRPCFlag = true
-				method = "bloxroute"
+				method = "rpc"
 
 			} else if amountSol.Uint64() > 30000000 && amountSol.Uint64() <= 50000000 {
 				tip := new(big.Int).Mul(amountSol, big.NewInt(57))
