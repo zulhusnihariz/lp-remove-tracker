@@ -208,7 +208,7 @@ func runBatchTransactionProcess() {
 				log.Printf("%s| Remove from tracking", tracker.AmmId)
 				go bot.TrackedAmm(tracker.AmmId, true)
 			} else {
-				txs, err := generateInstructions(tracker.AmmId, "bloxroute")
+				txs, err := generateInstructions(tracker.AmmId, "bloxroute", tracker.LastUpdated < time.Now().Add(-200*time.Second).Unix())
 				if err != nil {
 					log.Print(err)
 				}
@@ -512,7 +512,7 @@ func sniper(amount *big.Int, amountSol *big.Int, pKey *types.RaydiumPoolKeys, tx
 			}
 
 			var minAmountOut uint64
-			var method = "rpc"
+			var method = "bloxroute"
 			var useStakedRPCFlag bool = false
 
 			if amountSol.Uint64() > 5000000 && amountSol.Uint64() <= 30000000 {
@@ -524,7 +524,7 @@ func sniper(amount *big.Int, amountSol *big.Int, pKey *types.RaydiumPoolKeys, tx
 				minAmountOut = 400000
 
 				useStakedRPCFlag = true
-				method = "rpc"
+				method = "bloxroute"
 
 			} else if amountSol.Uint64() > 30000000 && amountSol.Uint64() <= 50000000 {
 				tip := new(big.Int).Mul(amountSol, big.NewInt(57))
@@ -683,7 +683,7 @@ func sellToken(
 	log.Printf("%s | SELL | %s", ammId, signatures)
 }
 
-func generateInstructions(ammId *solana.PublicKey, method string) ([]*solana.Transaction, error) {
+func generateInstructions(ammId *solana.PublicKey, method string, isCheaper bool) ([]*solana.Transaction, error) {
 
 	var txs []*solana.Transaction = []*solana.Transaction{}
 
@@ -705,6 +705,10 @@ func generateInstructions(ammId *solana.PublicKey, method string) ([]*solana.Tra
 		MicroLamports: 40040,
 		Units:         45000,
 		Tip:           0,
+	}
+
+	if isCheaper {
+		compute.MicroLamports = 1010
 	}
 
 	chunk, err := bot.GetTokenChunk(ammId)
