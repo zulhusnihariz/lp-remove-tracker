@@ -19,6 +19,7 @@ import (
 	bot "github.com/iqbalbaharum/lp-remove-tracker/internal/library"
 	"github.com/iqbalbaharum/lp-remove-tracker/internal/liquidity"
 	"github.com/iqbalbaharum/lp-remove-tracker/internal/storage"
+	"github.com/iqbalbaharum/lp-remove-tracker/internal/types"
 )
 
 func loadAdapter() {
@@ -253,19 +254,7 @@ func processWithdraw(ins generators.TxInstruction, tx generators.GeyserResponse)
 		return
 	}
 
-	tracker, err := bot.GetAmmTrackingStatus(ammId)
-	if err != nil {
-		log.Print(err)
-		return
-	}
-
-	if tracker.Status == storage.PAUSE {
-		log.Printf("%s | UNPAUSED tracking", ammId)
-		bot.TrackedAmm(ammId, false)
-		return
-	}
-
-	// buyToken(pKey, 100000, 0, ammId, compute, false, config.BUY_METHOD)
+	bot.TrackedAmm(ammId)
 }
 
 /**
@@ -330,12 +319,26 @@ func processSwapBaseIn(ins generators.TxInstruction, tx generators.GeyserRespons
 		return
 	}
 
+	tracker, err := bot.GetAmmTrackingStatus(ammId)
+
+	if tracker.Status != storage.TRACKED_TRIGGER_ONLY {
+		return
+	}
+
 	amount := bot.GetBalanceFromTransaction(tx.MempoolTxns.PreTokenBalances, tx.MempoolTxns.PostTokenBalances, mint)
 	amountSol := bot.GetBalanceFromTransaction(tx.MempoolTxns.PreTokenBalances, tx.MempoolTxns.PostTokenBalances, config.WRAPPED_SOL)
 
-	if amount.Sign() == -1 {
-		if amountSol.Cmp(big.NewInt(10000000)) == 1 {
+	if amount.Sign() == 1 {
+		if amountSol.Cmp(big.NewInt(0)) == 1 {
 			log.Printf("%s | %s | Potential entry %d SOL (Slot %d) | %s", pKey.ID, tx.MempoolTxns.Source, amountSol, tx.MempoolTxns.Slot, tx.MempoolTxns.Signature)
+
+			bot.SetTrade(&types.Trade{
+				AmmId:     ammId,
+				Mint:      &mint,
+				Action:    "BUY",
+				Amount:    big.NewInt(0).Abs(amount).String(),
+				Signature: tx.MempoolTxns.Signature,
+			})
 		}
 	}
 

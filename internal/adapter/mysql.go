@@ -61,5 +61,6 @@ func GetMySQLClient() (*sql.DB, error) {
 	if Database == nil {
 		return nil, errors.New("MySQL client is not initialized. call InitMySQLClient first")
 	}
+
 	return Database.MysqlClient, nil
 }

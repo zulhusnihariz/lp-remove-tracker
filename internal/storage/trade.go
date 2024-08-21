@@ -18,10 +18,9 @@ func NewTradeStorage(db *sql.DB) *TradeStorage {
 
 func (s *TradeStorage) SetTrade(trade *types.Trade) error {
 	query := `
-			INSERT INTO trades (ammId, mint, action, amount, signature, timestamp)
+			INSERT INTO trades (amm_id, mint, action, amount, signature, timestamp)
 			VALUES (?, ?, ?, ?, ?, ?)
 		`
-
 	_, err := s.client.Exec(
 		query,
 		trade.AmmId.String(),

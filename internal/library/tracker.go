@@ -14,7 +14,7 @@ func trackedInit() {
 
 }
 
-func TrackedAmm(ammId *solana.PublicKey, triggerOnly bool) {
+func TrackedAmm(ammId *solana.PublicKey) {
 	redisClient, err := adapter.GetRedisClient(4)
 	if err != nil {
 		log.Fatalf("Failed to get initialize redis instance: %v", err)
@@ -23,12 +23,7 @@ func TrackedAmm(ammId *solana.PublicKey, triggerOnly bool) {
 	var tracker types.Tracker = types.Tracker{}
 	tracker.AmmId = ammId
 
-	if triggerOnly {
-		tracker.Status = storage.TRACKED_TRIGGER_ONLY
-	} else {
-		tracker.Status = storage.TRACKED_BOTH
-		tracker.LastUpdated = time.Now().Unix()
-	}
+	tracker.Status = storage.TRACKED_TRIGGER_ONLY
 
 	storage.SetTracked(redisClient, ammId.String(), tracker)
 }
