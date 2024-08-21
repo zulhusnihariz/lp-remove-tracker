@@ -1,16 +1,12 @@
 package config
 
 import (
-	"errors"
-	"fmt"
 	"log"
 	"math/rand"
 	"os"
-	"strconv"
 
 	"github.com/gagliardetto/solana-go"
-	"github.com/iqbalbaharum/go-arbi-bot/internal/adapter"
-	"github.com/iqbalbaharum/go-arbi-bot/internal/types"
+	"github.com/iqbalbaharum/lp-remove-tracker/internal/types"
 	"github.com/joho/godotenv"
 )
 
@@ -41,22 +37,16 @@ var (
 )
 
 var (
-	Payer                *solana.Wallet
-	AddressLookupTable   solana.PublicKey
-	GrpcAddr             string
-	GrpcToken            string
-	InsecureConnection   bool
-	RedisAddr            string
-	RedisPassword        string
-	RpcHttpUrl           string
-	RpcWsUrl             string
-	BloxRouteUrl         string
-	BloxRouteWsUrl       string
-	BloxRouteToken       string
-	ChunkSplitter        int64
-	MachineGunMinTrigger int64
-	BuyDelay             int64
-	JitoAuthPrivateKey   *solana.Wallet
+	AddressLookupTable solana.PublicKey
+	GrpcAddr           string
+	GrpcToken          string
+	InsecureConnection bool
+	RedisAddr          string
+	RedisPassword      string
+	RpcHttpUrl         string
+	RpcWsUrl           string
+	MySqlDsn           string
+	MySqlDbName        string
 )
 
 func InitEnv() error {
@@ -64,14 +54,6 @@ func InitEnv() error {
 		log.Fatalf("Error loading .env file")
 	}
 
-	pay, e := solana.WalletFromPrivateKeyBase58(os.Getenv("PAYER_PRIVATE_KEY"))
-	if e != nil {
-		return e
-	}
-
-	Payer = pay
-
-	AddressLookupTable = solana.MustPublicKeyFromBase58(os.Getenv("RAYDIUM_ALT"))
 	GrpcAddr = os.Getenv("GRPC_ENDPOINT")
 	GrpcToken = os.Getenv("GRPC_TOKEN")
 	InsecureConnection = os.Getenv("GRPC_INSECURE") == "true"
@@ -79,44 +61,8 @@ func InitEnv() error {
 	RedisPassword = os.Getenv("REDIS_PASSWORD")
 	RpcHttpUrl = os.Getenv("RPC_HTTP_URL")
 	RpcWsUrl = os.Getenv("RPC_WS_URL")
-	BloxRouteUrl = os.Getenv("BLOXROUTE_URL")
-	BloxRouteWsUrl = os.Getenv("BLOXROUTE_WS_URL")
-	BloxRouteToken = os.Getenv("BLOXROUTE_TOKEN")
-
-	jitoAuth, e := solana.WalletFromPrivateKeyBase58(os.Getenv("JITO_AUTH_PRIVATE_KEY"))
-	if e != nil {
-		return e
-	}
-
-	JitoAuthPrivateKey = jitoAuth
-
-	var err error
-
-	mcMinTrigger, err := strconv.ParseInt(os.Getenv("MCGUN_MIN_TRIGGER"), 10, 64)
-	if err != nil {
-		mcMinTrigger = 500000
-	}
-
-	MachineGunMinTrigger = mcMinTrigger
-
-	chunk, err := strconv.ParseInt(os.Getenv("CHUNK_SPLITTER"), 10, 64)
-	if err != nil {
-		chunk = 50
-	}
-
-	ChunkSplitter = chunk
-
-	delay, err := strconv.ParseInt(os.Getenv("BUY_DELAY"), 10, 64)
-	if err != nil {
-		chunk = 3000
-	}
-
-	BuyDelay = delay
-
-	err = adapter.InitRedisClients(RedisAddr, RedisPassword)
-	if err != nil {
-		return errors.New(fmt.Sprintf("Failed to initialize Redis clients: %v", err))
-	}
+	MySqlDsn = os.Getenv("MYSQL_DSN")
+	MySqlDbName = os.Getenv("MYSQL_DBNAME")
 
 	return nil
 }

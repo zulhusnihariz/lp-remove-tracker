@@ -5,8 +5,8 @@ import (
 	"log"
 	"sync"
 
-	"github.com/iqbalbaharum/go-arbi-bot/internal/config"
-	"github.com/iqbalbaharum/go-arbi-bot/internal/generators"
+	"github.com/iqbalbaharum/lp-remove-tracker/internal/config"
+	"github.com/iqbalbaharum/lp-remove-tracker/internal/generators"
 )
 
 type SlotNotification struct {

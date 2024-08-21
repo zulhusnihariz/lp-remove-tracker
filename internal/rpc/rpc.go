@@ -13,7 +13,7 @@ import (
 	"github.com/gagliardetto/solana-go"
 	addresslookuptable "github.com/gagliardetto/solana-go/programs/address-lookup-table"
 	"github.com/gagliardetto/solana-go/rpc"
-	"github.com/iqbalbaharum/go-arbi-bot/internal/coder"
+	"github.com/iqbalbaharum/lp-remove-tracker/internal/coder"
 )
 
 type AccountInfo struct {
@@ -56,7 +56,6 @@ type RPCError struct {
 
 // var url = os.Getenv("HTTP_RPC_URL")
 const url = "https://lineage-ams.rpcpool.com/390cc92f-d182-4400-a829-9524d8a9e23a"
-const advancedRpc = "https://dedicated-rpc-bone2.solanatracker.io/x19a7cdf?advancedTx=true"
 
 func CallRPC(method string, params interface{}, customUrl ...string) (*ResponseBody, error) {
 	rpcUrl := url
@@ -120,62 +119,6 @@ func CallRPC(method string, params interface{}, customUrl ...string) (*ResponseB
 	}
 
 	return &responseBody, nil
-}
-
-func SendTransaction(transaction *solana.Transaction) error {
-
-	msg, err := transaction.MarshalBinary()
-	txBase64 := base64.StdEncoding.EncodeToString(msg)
-
-	params := []interface{}{
-		txBase64,
-		map[string]interface{}{
-			"encoding":            "base64",
-			"skipPreflight":       true,
-			"maxRetries":          1,
-			"preflightCommitment": "confirmed",
-		},
-	}
-
-	// Call RPC function
-	CallRPC("sendTransaction", params)
-	CallRPC("sendTransaction", params, advancedRpc)
-
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func SendBatchTransactions(transactions []*solana.Transaction) error {
-
-	for _, tx := range transactions {
-
-		if tx == nil {
-			continue
-		}
-
-		msg, err := tx.MarshalBinary()
-		if err != nil {
-			return err
-		}
-
-		txBase64 := base64.StdEncoding.EncodeToString(msg)
-		params := []interface{}{
-			txBase64,
-			map[string]interface{}{
-				"encoding":            "base64",
-				"skipPreflight":       true,
-				"maxRetries":          1,
-				"preflightCommitment": "confirmed",
-			},
-		}
-
-		CallRPC("sendTransaction", params, advancedRpc)
-	}
-
-	return nil
 }
 
 func GetLatestBlockhash() (solana.Hash, error) {

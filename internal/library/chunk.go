@@ -4,9 +4,9 @@ import (
 	"log"
 
 	"github.com/gagliardetto/solana-go"
-	"github.com/iqbalbaharum/go-arbi-bot/internal/adapter"
-	"github.com/iqbalbaharum/go-arbi-bot/internal/storage"
-	"github.com/iqbalbaharum/go-arbi-bot/internal/types"
+	"github.com/iqbalbaharum/lp-remove-tracker/internal/adapter"
+	"github.com/iqbalbaharum/lp-remove-tracker/internal/storage"
+	"github.com/iqbalbaharum/lp-remove-tracker/internal/types"
 )
 
 func SetTokenChunk(ammId *solana.PublicKey, chunk types.TokenChunk) error {

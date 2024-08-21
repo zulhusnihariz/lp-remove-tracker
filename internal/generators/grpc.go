@@ -11,8 +11,8 @@ import (
 	"time"
 
 	"github.com/gagliardetto/solana-go"
-	"github.com/iqbalbaharum/go-arbi-bot/internal/types"
-	"github.com/iqbalbaharum/go-arbi-bot/internal/utils"
+	"github.com/iqbalbaharum/lp-remove-tracker/internal/types"
+	"github.com/iqbalbaharum/lp-remove-tracker/internal/utils"
 	pb "github.com/iqbalbaharum/solana-protos/pb"
 	"github.com/mr-tron/base58"
 	"google.golang.org/grpc"

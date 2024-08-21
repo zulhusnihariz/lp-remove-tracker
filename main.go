@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"math/big"
 	"runtime"
@@ -11,17 +12,13 @@ import (
 	_ "go.uber.org/automaxprocs"
 
 	"github.com/gagliardetto/solana-go"
-	"github.com/iqbalbaharum/go-arbi-bot/internal/adapter"
-	"github.com/iqbalbaharum/go-arbi-bot/internal/coder"
-	"github.com/iqbalbaharum/go-arbi-bot/internal/config"
-	"github.com/iqbalbaharum/go-arbi-bot/internal/generators"
-	instructions "github.com/iqbalbaharum/go-arbi-bot/internal/instructions"
-	bot "github.com/iqbalbaharum/go-arbi-bot/internal/library"
-	"github.com/iqbalbaharum/go-arbi-bot/internal/liquidity"
-	"github.com/iqbalbaharum/go-arbi-bot/internal/pool"
-	"github.com/iqbalbaharum/go-arbi-bot/internal/rpc"
-	"github.com/iqbalbaharum/go-arbi-bot/internal/storage"
-	"github.com/iqbalbaharum/go-arbi-bot/internal/types"
+	"github.com/iqbalbaharum/lp-remove-tracker/internal/adapter"
+	"github.com/iqbalbaharum/lp-remove-tracker/internal/coder"
+	"github.com/iqbalbaharum/lp-remove-tracker/internal/config"
+	"github.com/iqbalbaharum/lp-remove-tracker/internal/generators"
+	bot "github.com/iqbalbaharum/lp-remove-tracker/internal/library"
+	"github.com/iqbalbaharum/lp-remove-tracker/internal/liquidity"
+	"github.com/iqbalbaharum/lp-remove-tracker/internal/storage"
 )
 
 func loadAdapter() {
@@ -30,8 +27,6 @@ func loadAdapter() {
 
 var (
 	grpcs            []*generators.GrpcClient
-	bloxRouteRpcPool *pool.BloxRoutePool
-	jitoRpc          *rpc.JitoRpc
 	latestBlockhash  string
 	wsolTokenAccount solana.PublicKey
 	wg               sync.WaitGroup
@@ -54,30 +49,19 @@ func main() {
 		return
 	}
 
+	err = adapter.InitRedisClients(config.RedisAddr, config.RedisPassword)
+	if err != nil {
+		log.Fatalf(fmt.Sprintf("Failed to initialize Redis clients: %v", err))
+		return
+	}
+
+	err = adapter.InitSqlClient(config.MySqlDsn)
+	if err != nil {
+		log.Fatalf(fmt.Sprintf("Failed to initialize SQL client: %v", err))
+		return
+	}
+
 	log.Print("Initialized ENVIRONMENT successfully")
-	log.Printf("Wallet: %s", config.Payer.PublicKey())
-
-	ata, err := getOrCreateAssociatedTokenAccount()
-	if err != nil {
-		log.Print(err)
-		return
-	}
-
-	bloxRouteRpcPool, err = pool.NewBloxRoutePool(numCPU)
-	if err != nil {
-		log.Print(err)
-		return
-	}
-
-	jitoRpc, err = rpc.NewJitoClient()
-
-	if err != nil {
-		log.Print(err)
-		return
-	}
-
-	log.Printf("WSOL Associated Token Account %s", ata)
-	wsolTokenAccount = *ata
 
 	client, err := generators.GrpcConnect(config.GRPC1.Addr, config.GRPC1.InsecureConnection)
 	client2, err := generators.GrpcConnect(config.GRPC2.Addr, config.GRPC2.InsecureConnection)
@@ -110,12 +94,6 @@ func main() {
 			}
 		}()
 	}
-
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		runBatchTransactionThread()
-	}()
 
 	// wg.Add(1)
 	listenFor(
@@ -158,71 +136,6 @@ func listenFor(client *generators.GrpcClient, name string, addresses []string, t
 			log.Printf("Error in first gRPC subscription: %v", err)
 		}
 	}()
-}
-
-func runBatchTransactionThread() {
-	// ticker := time.NewTicker(time.Duration(config.TxInterval) * time.Millisecond)
-	// defer ticker.Stop()
-
-	// for {
-	// 	select {
-	// 	case <-ticker.C:
-	// 		go runBatchTransactionProcess()
-	// 	}
-	// }
-	wsRpc, err := rpc.NewWsRpc()
-	if err != nil {
-		log.Print(err)
-		return
-	}
-
-	slotChan := make(chan rpc.SlotNotification)
-	wsRpc.SubscribeToSlot(slotChan)
-
-	var latestSlot uint64 = 0
-
-	for slot := range slotChan {
-		if slot.Slot-latestSlot > 0 {
-			latestSlot = slot.Slot
-			runBatchTransactionProcess()
-		}
-	}
-}
-
-func runBatchTransactionProcess() {
-	if len(latestBlockhash) <= 0 {
-		return
-	}
-
-	trackedAMMs, err := bot.GetAllTrackedAmm()
-	if err != nil {
-		log.Printf("Error fetching tracked AMMs: %v", err)
-		return
-	}
-
-	var transactions []*solana.Transaction
-
-	for _, tracker := range *trackedAMMs {
-		if tracker.Status == storage.TRACKED_BOTH {
-			if tracker.LastUpdated < time.Now().Add(-300*time.Second).Unix() {
-				log.Printf("%s| Remove from tracking", tracker.AmmId)
-				go bot.TrackedAmm(tracker.AmmId, true)
-			} else {
-				txs, err := generateInstructions(tracker.AmmId, "bloxroute", tracker.LastUpdated < time.Now().Add(-200*time.Second).Unix())
-				if err != nil {
-					log.Print(err)
-				}
-
-				go bloxRouteRpcPool.SendTransaction(txs[0], false)
-
-				transactions = append(transactions, txs...)
-			}
-		}
-	}
-
-	if len(transactions) > 0 {
-		go rpc.SendBatchTransactions(transactions)
-	}
 }
 
 func processResponse(response generators.GeyserResponse) {
@@ -327,7 +240,7 @@ func processWithdraw(ins generators.TxInstruction, tx generators.GeyserResponse)
 		return
 	}
 
-	time.Sleep(time.Duration(config.BuyDelay) * time.Millisecond)
+	time.Sleep(time.Duration(500) * time.Millisecond)
 
 	reserve, err := liquidity.GetPoolSolBalance(pKey)
 	if err != nil {
@@ -352,13 +265,7 @@ func processWithdraw(ins generators.TxInstruction, tx generators.GeyserResponse)
 		return
 	}
 
-	compute := instructions.ComputeUnit{
-		MicroLamports: 500000,
-		Units:         85000,
-		Tip:           0,
-	}
-
-	buyToken(pKey, 100000, 0, ammId, compute, false, config.BUY_METHOD)
+	// buyToken(pKey, 100000, 0, ammId, compute, false, config.BUY_METHOD)
 }
 
 /**
@@ -413,21 +320,6 @@ func processSwapBaseIn(ins generators.TxInstruction, tx generators.GeyserRespons
 		return
 	}
 
-	tracker, err := bot.GetAmmTrackingStatus(ammId)
-
-	if !signerPublicKey.Equals(config.Payer.PublicKey()) {
-
-		if err != nil {
-			log.Print(err)
-			return
-		}
-
-		if tracker.Status != storage.TRACKED_TRIGGER_ONLY && tracker.Status != storage.TRACKED_BOTH {
-			return
-		}
-
-	}
-
 	pKey, err := liquidity.GetPoolKeys(ammId)
 	if err != nil {
 		return
@@ -441,42 +333,10 @@ func processSwapBaseIn(ins generators.TxInstruction, tx generators.GeyserRespons
 	amount := bot.GetBalanceFromTransaction(tx.MempoolTxns.PreTokenBalances, tx.MempoolTxns.PostTokenBalances, mint)
 	amountSol := bot.GetBalanceFromTransaction(tx.MempoolTxns.PreTokenBalances, tx.MempoolTxns.PostTokenBalances, config.WRAPPED_SOL)
 
-	if signerPublicKey.Equals(config.Payer.PublicKey()) {
-		chunk, err := bot.GetTokenChunk(ammId)
-		if err != nil {
-			if err.Error() == "key not found" {
-				bot.SetTokenChunk(ammId, types.TokenChunk{
-					Total:     amount,
-					Remaining: amount,
-					Chunk:     new(big.Int).Div(amount, big.NewInt(config.ChunkSplitter)),
-				})
-
-				bot.TrackedAmm(ammId, true)
-
-				listenFor(
-					grpcs[0],
-					ammId.String(),
-					[]string{
-						ammId.String(),
-					}, txChannel, &wg)
-
-				log.Printf("%s | Tracked", ammId)
-			}
-			return
+	if amount.Sign() == -1 {
+		if amountSol.Cmp(big.NewInt(10000000)) == 1 {
+			log.Printf("%s | %s | Potential entry %d SOL (Slot %d) | %s", pKey.ID, tx.MempoolTxns.Source, amountSol, tx.MempoolTxns.Slot, tx.MempoolTxns.Signature)
 		}
-
-		if chunk.Remaining.Uint64() == 0 {
-			bot.UntrackedAmm(ammId)
-			log.Printf("%s | Cant deduct more since token remaining is out", ammId)
-			return
-		} else {
-			if tx.MempoolTxns.Error == "" {
-				chunk.Remaining = new(big.Int).Sub(chunk.Remaining, amount)
-				bot.SetTokenChunk(ammId, chunk)
-			}
-		}
-
-		return
 	}
 
 	// Only proceed if the amount is greater than 0.011 SOL and amount of SOL is a negative number (represent buy action)
@@ -484,276 +344,5 @@ func processSwapBaseIn(ins generators.TxInstruction, tx generators.GeyserRespons
 	// sniper(amount *big.Int, amountSol *big.Int, pKey *types.RaydiumPoolKeys, tx generators.GeyserResponse)
 
 	// Machine gun technique
-	go startMachineGun(amount, amountSol, tracker, ammId, tx)
 	// Sniper technique
-	go sniper(amount, amountSol, pKey, tx)
-}
-
-func startMachineGun(amount *big.Int, amountSol *big.Int, tracker *types.Tracker, ammId *solana.PublicKey, tx generators.GeyserResponse) {
-	if amount.Sign() == -1 {
-		if amountSol.Cmp(big.NewInt(config.MachineGunMinTrigger)) == 1 {
-			if tracker.Status != storage.TRACKED_BOTH {
-				log.Printf("%s | %s | Set Burst", ammId, tx.MempoolTxns.Source)
-				bot.TrackedAmm(ammId, false)
-			}
-		}
-	}
-}
-
-func sniper(amount *big.Int, amountSol *big.Int, pKey *types.RaydiumPoolKeys, tx generators.GeyserResponse) {
-	if amount.Sign() == -1 {
-		if amountSol.Cmp(big.NewInt(10000000)) == 1 {
-			log.Printf("%s | %s | Potential entry %d SOL (Slot %d) | %s", pKey.ID, tx.MempoolTxns.Source, amountSol, tx.MempoolTxns.Slot, tx.MempoolTxns.Signature)
-
-			compute := instructions.ComputeUnit{
-				MicroLamports: 0,
-				Units:         45000,
-				Tip:           0,
-			}
-
-			var minAmountOut uint64
-			var method = "bloxroute"
-			var useStakedRPCFlag bool = false
-
-			if amountSol.Uint64() > 5000000 && amountSol.Uint64() <= 30000000 {
-				lamport := new(big.Int).Mul(amountSol, big.NewInt(77))
-				lamport.Div(lamport, big.NewInt(100))
-
-				compute.MicroLamports = lamport.Uint64()
-				compute.Tip = 1000010
-				minAmountOut = 400000
-
-				useStakedRPCFlag = true
-				method = "bloxroute"
-
-			} else if amountSol.Uint64() > 30000000 && amountSol.Uint64() <= 50000000 {
-				tip := new(big.Int).Mul(amountSol, big.NewInt(57))
-				tip.Div(tip, big.NewInt(100))
-
-				compute.MicroLamports = 1000000
-				compute.Tip = tip.Uint64()
-				minAmountOut = 400000
-
-				useStakedRPCFlag = false
-				method = "jito"
-
-			} else if amountSol.Uint64() > 30000000 {
-				// tipBigInt := new(big.Int).Mul(amountSol, big.NewInt(87))
-				// tipBigInt.Div(tipBigInt, big.NewInt(100))
-				// compute.Tip = tipBigInt.Uint64()
-
-				// mAmount := new(big.Int).Mul(amountSol, big.NewInt(92))
-				// mAmount.Div(tipBigInt, big.NewInt(100))
-
-				// minAmountOut = mAmount.Uint64()
-
-				// useStakedRPCFlag = true
-				// method = "jito"
-				return
-			} else {
-				// Too small to be considered
-				return
-			}
-
-			chunk, err := bot.GetTokenChunk(&pKey.ID)
-			if err != nil {
-				log.Printf("%s | %s", pKey.ID, err)
-				return
-			}
-
-			if (chunk.Remaining).Uint64() == 0 {
-				log.Printf("%s | Juice out", pKey.ID)
-				return
-			}
-
-			go sellToken(pKey, chunk, minAmountOut, &pKey.ID, compute, useStakedRPCFlag, method)
-		}
-	}
-}
-
-func buyToken(
-	pKey *types.RaydiumPoolKeys,
-	amount uint64,
-	minAmountOut uint64,
-	ammId *solana.PublicKey,
-	compute instructions.ComputeUnit,
-	useStakedRPCFlag bool,
-	method string) {
-
-	blockhash, err := solana.HashFromBase58(latestBlockhash)
-	if err != nil {
-		log.Print(err)
-		return
-	}
-
-	options := instructions.TxOption{
-		Blockhash: blockhash,
-	}
-
-	signatures, transaction, err := instructions.MakeSwapInstructions(
-		pKey,
-		wsolTokenAccount,
-		compute,
-		options,
-		amount,
-		minAmountOut,
-		"buy",
-		config.BUY_METHOD,
-	)
-
-	if err != nil {
-		log.Printf("%s | %s", ammId, err)
-		return
-	}
-
-	switch method {
-	case "bloxroute":
-		bloxRouteRpcPool.SendTransaction(transaction, useStakedRPCFlag)
-		break
-	case "jito":
-		err := jitoRpc.StreamJitoTransaction(transaction, latestBlockhash)
-		if err != nil {
-			log.Printf("%s | %s", ammId, err)
-			return
-		}
-		break
-	}
-
-	rpc.SendTransaction(transaction)
-
-	log.Printf("%s | BUY | %s", ammId, signatures)
-}
-
-func sellToken(
-	pKey *types.RaydiumPoolKeys,
-	chunk types.TokenChunk,
-	minAmountOut uint64,
-	ammId *solana.PublicKey,
-	compute instructions.ComputeUnit,
-	useStakedRPCFlag bool,
-	method string) {
-
-	log.Print("Selling token")
-
-	blockhash, err := solana.HashFromBase58(latestBlockhash)
-	if err != nil {
-		log.Print(err)
-		return
-	}
-
-	options := instructions.TxOption{
-		Blockhash: blockhash,
-	}
-
-	log.Print("Creating swap instructions")
-
-	signatures, transaction, err := instructions.MakeSwapInstructions(
-		pKey,
-		wsolTokenAccount,
-		compute,
-		options,
-		chunk.Chunk.Uint64(),
-		minAmountOut,
-		"sell",
-		method,
-	)
-
-	if err != nil {
-		log.Printf("%s | %s", ammId, err)
-		return
-	}
-
-	log.Printf("%s | PRE-SELL", ammId)
-
-	switch method {
-	case "bloxroute":
-		bloxRouteRpcPool.SendTransaction(transaction, useStakedRPCFlag)
-		break
-	case "jito":
-		err := jitoRpc.StreamJitoTransaction(transaction, latestBlockhash)
-		if err != nil {
-			log.Printf("%s | %s", ammId, err)
-			return
-		}
-		break
-	}
-
-	rpc.SendTransaction(transaction)
-
-	log.Printf("%s | SELL | %s", ammId, signatures)
-}
-
-func generateInstructions(ammId *solana.PublicKey, method string, isCheaper bool) ([]*solana.Transaction, error) {
-
-	var txs []*solana.Transaction = []*solana.Transaction{}
-
-	pKey, err := liquidity.GetPoolKeys(ammId)
-	if err != nil {
-		return nil, err
-	}
-
-	blockhash, err := solana.HashFromBase58(latestBlockhash)
-	if err != nil {
-		return nil, err
-	}
-
-	options := instructions.TxOption{
-		Blockhash: blockhash,
-	}
-
-	compute := instructions.ComputeUnit{
-		MicroLamports: 40040,
-		Units:         45000,
-		Tip:           0,
-	}
-
-	if isCheaper {
-		compute.MicroLamports = 1010
-	}
-
-	chunk, err := bot.GetTokenChunk(ammId)
-	if err != nil {
-		log.Printf("%s | %s", ammId, err)
-		return nil, err
-	}
-
-	if (chunk.Remaining).Uint64() == 0 {
-		log.Printf("%s | No more juice", ammId)
-		return nil, err
-	}
-
-	_, transaction, err := instructions.MakeSwapInstructions(
-		pKey,
-		wsolTokenAccount,
-		compute,
-		options,
-		chunk.Chunk.Uint64(),
-		50000,
-		"sell",
-		method,
-	)
-
-	txs = append(txs, transaction)
-
-	if err != nil {
-		log.Printf("%s | %s", ammId, err)
-		return nil, err
-	}
-
-	return txs, nil
-}
-
-func getOrCreateAssociatedTokenAccount() (*solana.PublicKey, error) {
-
-	ata, tx, err := instructions.ValidatedAssociatedTokenAccount(&config.WRAPPED_SOL)
-	if err != nil {
-		return nil, err
-	}
-
-	if tx != nil {
-		log.Print("Creating WSOL associated token account")
-		rpc.SendTransaction(tx)
-	}
-
-	return &ata, nil
 }

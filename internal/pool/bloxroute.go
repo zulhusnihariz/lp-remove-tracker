@@ -5,7 +5,7 @@ import (
 	"sync"
 
 	"github.com/gagliardetto/solana-go"
-	"github.com/iqbalbaharum/go-arbi-bot/internal/rpc"
+	"github.com/iqbalbaharum/lp-remove-tracker/internal/rpc"
 )
 
 type BloxRoutePoolStream struct {

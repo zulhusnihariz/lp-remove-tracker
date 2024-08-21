@@ -1,15 +1,16 @@
-module github.com/iqbalbaharum/go-arbi-bot
+module github.com/iqbalbaharum/lp-remove-tracker
 
 go 1.22.5
 
 require (
 	github.com/gagliardetto/binary v0.8.0
 	github.com/gagliardetto/solana-go v1.11.0
+	github.com/go-sql-driver/mysql v1.8.1
 	github.com/gorilla/websocket v1.5.3
+	github.com/iqbalbaharum/solana-protos v1.0.1-0.20240812112918-e1172625c146
 	github.com/joho/godotenv v1.5.1
 	github.com/mr-tron/base58 v1.2.0
 	github.com/redis/go-redis/v9 v9.5.4
-	github.com/weeaa/jito-go v0.0.0-20240809205054-007d6a8ee799
 	go.uber.org/automaxprocs v1.5.3
 	google.golang.org/grpc v1.65.0
 )
@@ -24,7 +25,6 @@ require (
 	github.com/fatih/color v1.17.0 // indirect
 	github.com/gagliardetto/treeout v0.1.4 // indirect
 	github.com/google/uuid v1.6.0 // indirect
-	github.com/iqbalbaharum/solana-protos v1.0.1-0.20240812112918-e1172625c146 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/klauspost/compress v1.17.9 // indirect
 	github.com/logrusorgru/aurora v2.0.3+incompatible // indirect
@@ -35,7 +35,9 @@ require (
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/mostynb/zstdpool-freelist v0.0.0-20201229113212-927304c0c3b1 // indirect
 	github.com/streamingfast/logging v0.0.0-20230608130331-f22c91403091 // indirect
+	github.com/stretchr/testify v1.9.0 // indirect
 	go.mongodb.org/mongo-driver v1.16.0 // indirect
+	go.uber.org/atomic v1.11.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/ratelimit v0.3.1 // indirect
 	go.uber.org/zap v1.27.0 // indirect

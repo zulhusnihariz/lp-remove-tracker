@@ -6,7 +6,7 @@ import (
 	"errors"
 
 	"github.com/gagliardetto/solana-go"
-	"github.com/iqbalbaharum/go-arbi-bot/internal/types"
+	"github.com/iqbalbaharum/lp-remove-tracker/internal/types"
 	"github.com/redis/go-redis/v9"
 )
 
