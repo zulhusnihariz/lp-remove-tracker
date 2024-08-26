@@ -18,6 +18,14 @@ func (coder *RaydiumAmmInstructionCoder) Decode(data []byte) (interface{}, error
 	return decodeData(data)
 }
 
+func (coder *RaydiumAmmInstructionCoder) DecodeCompute(data []byte) (Compute, error) {
+	return decodeCompute(data)
+}
+
+func (coder *RaydiumAmmInstructionCoder) DecodeTransfer(data []byte) (Transfer, error) {
+	return decodeTransfer(data)
+}
+
 // Decoding function.
 func decodeData(data []byte) (interface{}, error) {
 	buf := bytes.NewReader(data)
@@ -36,6 +44,25 @@ func decodeData(data []byte) (interface{}, error) {
 	default:
 		return nil, errors.New("invalid instruction ID")
 	}
+}
+
+func decodeCompute(data []byte) (Compute, error) {
+	var instruction Compute
+
+	buf := bytes.NewReader(data)
+	binary.Read(buf, binary.LittleEndian, &instruction.Instruction)
+	binary.Read(buf, binary.LittleEndian, &instruction.Value)
+
+	return instruction, nil
+}
+
+func decodeTransfer(data []byte) (Transfer, error) {
+	var instruction Transfer
+
+	buf := bytes.NewReader(data)
+	binary.Read(buf, binary.LittleEndian, &instruction.Instruction)
+	binary.Read(buf, binary.LittleEndian, &instruction.Amount)
+	return instruction, nil
 }
 
 func decodeInitialize2(buf *bytes.Reader) (Initialize2, error) {

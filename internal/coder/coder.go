@@ -20,3 +20,13 @@ type SwapBaseOut struct {
 	MaxAmountIn uint64
 	AmountOut   uint64
 }
+
+type Compute struct {
+	Instruction uint8
+	Value       uint32
+}
+
+type Transfer struct {
+	Instruction uint32
+	Amount      int64
+}

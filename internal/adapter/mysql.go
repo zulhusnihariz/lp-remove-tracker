@@ -13,20 +13,18 @@ import (
 
 var (
 	Database  *db.Database
-	mysqlOnce sync.Once
+	mySQLOnce sync.Once
 )
 
-func InitSqlClient(dsn string) error {
+func InitMySQLClient(dsn string) error {
 	if dsn == "" {
 		return errors.New("MySQL DSN is empty")
 	}
 
 	var initError error
 
-	var client *sql.DB
-	var err error
-	mysqlOnce.Do(func() {
-		client, err = sql.Open("mysql", dsn)
+	mySQLOnce.Do(func() {
+		client, err := sql.Open("mysql", dsn)
 		if err != nil {
 			initError = fmt.Errorf("failed to connect to MySQL: %v", err)
 			return
@@ -36,25 +34,22 @@ func InitSqlClient(dsn string) error {
 			initError = fmt.Errorf("failed to ping MySQL: %v", err)
 			return
 		}
+
+		database, err := db.NewDatabase(client, config.MySqlDbName)
+		if err != nil {
+			initError = err
+		}
+
+		err = database.CreateDatabaseAndTable()
+		if err != nil {
+			initError = err
+		}
+
+		Database = database
+
 	})
 
-	if initError != nil {
-		return initError
-	}
-
-	db, err := db.NewDatabase(client, config.MySqlDbName)
-	if err != nil {
-		return err
-	}
-
-	err = db.CreateDatabaseAndTables()
-	if err != nil {
-		return err
-	}
-
-	Database = db
-
-	return nil
+	return initError
 }
 
 func GetMySQLClient() (*sql.DB, error) {

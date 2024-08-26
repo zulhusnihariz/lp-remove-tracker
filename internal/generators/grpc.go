@@ -108,6 +108,7 @@ func GrpcConnect(address string, plaintext bool) (*GrpcClient, error) {
 }
 
 func (g *GrpcClient) CloseConnection() error {
+
 	if g.conn != nil {
 		return g.conn.Close()
 	}

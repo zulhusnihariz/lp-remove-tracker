@@ -1,10 +1,9 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"log"
-	"math/big"
+	"net/http"
 	"runtime"
 	"sync"
 	"time"
@@ -12,14 +11,29 @@ import (
 	_ "go.uber.org/automaxprocs"
 
 	"github.com/gagliardetto/solana-go"
+	"github.com/go-chi/chi/v5"
 	"github.com/iqbalbaharum/lp-remove-tracker/internal/adapter"
-	"github.com/iqbalbaharum/lp-remove-tracker/internal/coder"
 	"github.com/iqbalbaharum/lp-remove-tracker/internal/config"
 	"github.com/iqbalbaharum/lp-remove-tracker/internal/generators"
+	"github.com/iqbalbaharum/lp-remove-tracker/internal/handler"
 	bot "github.com/iqbalbaharum/lp-remove-tracker/internal/library"
-	"github.com/iqbalbaharum/lp-remove-tracker/internal/liquidity"
 	"github.com/iqbalbaharum/lp-remove-tracker/internal/storage"
-	"github.com/iqbalbaharum/lp-remove-tracker/internal/types"
+)
+
+type Server struct {
+	Router *chi.Mux
+}
+
+func CreateServer() *Server {
+	server := &Server{
+		Router: handler.CreateRoutes(),
+	}
+
+	return server
+}
+
+const (
+	PORT = 5000
 )
 
 func loadAdapter() {
@@ -56,7 +70,7 @@ func main() {
 		return
 	}
 
-	err = adapter.InitSqlClient(config.MySqlDsn)
+	err = adapter.InitMySQLClient(config.MySqlDsn)
 	if err != nil {
 		log.Fatalf(fmt.Sprintf("Failed to initialize SQL client: %v", err))
 		return
@@ -65,6 +79,12 @@ func main() {
 	log.Print("Initialized ENVIRONMENT successfully")
 
 	client, err := generators.GrpcConnect(config.GRPC1.Addr, config.GRPC1.InsecureConnection)
+
+	if err != nil {
+		log.Fatalf("Error in GRPC connection: %s ", err)
+		return
+	}
+
 	client2, err := generators.GrpcConnect(config.GRPC2.Addr, config.GRPC2.InsecureConnection)
 
 	grpcs = append(grpcs, client, client2)
@@ -86,7 +106,7 @@ func main() {
 			for response := range txChannel {
 				if _, exists := processed.Load(response.MempoolTxns.Signature); !exists {
 					processed.Store(response.MempoolTxns.Signature, true)
-					processResponse(response)
+					bot.ProcessResponse(response)
 
 					time.AfterFunc(1*time.Minute, func() {
 						processed.Delete(response.MempoolTxns.Signature)
@@ -96,7 +116,6 @@ func main() {
 		}()
 	}
 
-	// wg.Add(1)
 	listenFor(
 		grpcs[0],
 		"triton",
@@ -111,12 +130,28 @@ func main() {
 			config.RAYDIUM_AMM_V4.String(),
 		}, txChannel, &wg)
 
+	mySqlClient, err := adapter.GetMySQLClient()
+
+	if err != nil {
+		panic(err)
+	}
+
+	storage.Init(mySqlClient)
+
+	server := CreateServer()
+	port := fmt.Sprintf(":%d", PORT)
+	fmt.Printf("server running on port%s \n", port)
+
+	http.ListenAndServe(port, server.Router)
+
 	wg.Wait()
 
 	for i := 0; i < len(grpcs); i++ {
 		grpc := grpcs[i]
 		defer func() {
+
 			if err := grpc.CloseConnection(); err != nil {
+
 				log.Printf("Error closing gRPC connection: %v", err)
 			}
 		}()
@@ -137,215 +172,4 @@ func listenFor(client *generators.GrpcClient, name string, addresses []string, t
 			log.Printf("Error in first gRPC subscription: %v", err)
 		}
 	}()
-}
-
-func processResponse(response generators.GeyserResponse) {
-	latestBlockhash = response.MempoolTxns.RecentBlockhash
-
-	c := coder.NewRaydiumAmmInstructionCoder()
-	for _, ins := range response.MempoolTxns.Instructions {
-		programId := response.MempoolTxns.AccountKeys[ins.ProgramIdIndex]
-
-		if programId == config.RAYDIUM_AMM_V4.String() {
-			decodedIx, err := c.Decode(ins.Data)
-			if err != nil {
-				continue
-			}
-
-			switch decodedIx.(type) {
-			case coder.Initialize2:
-				log.Printf("Initialize2 | %s | %s", response.MempoolTxns.Source, response.MempoolTxns.Signature)
-				processInitialize2(ins, response)
-			case coder.Withdraw:
-				log.Printf("Withdraw | %s | %s", response.MempoolTxns.Source, response.MempoolTxns.Signature)
-				processWithdraw(ins, response)
-			case coder.SwapBaseIn:
-				processSwapBaseIn(ins, response)
-			case coder.SwapBaseOut:
-			default:
-				log.Println("Unknown instruction type")
-			}
-		}
-	}
-}
-
-func getPublicKeyFromTx(pos int, tx generators.MempoolTxn, instruction generators.TxInstruction) (*solana.PublicKey, error) {
-	accountIndexes := instruction.Accounts
-	if len(accountIndexes) == 0 {
-		return nil, errors.New("no account indexes provided")
-	}
-
-	lookupsForAccountKeyIndex := bot.GenerateTableLookup(tx.AddressTableLookups)
-	var ammId *solana.PublicKey
-	accountIndex := int(accountIndexes[pos])
-
-	if accountIndex >= len(tx.AccountKeys) {
-		lookupIndex := accountIndex - len(tx.AccountKeys)
-		lookup := lookupsForAccountKeyIndex[lookupIndex]
-		table, err := bot.GetLookupTable(solana.MustPublicKeyFromBase58(lookup.LookupTableKey))
-		if err != nil {
-			return nil, err
-		}
-
-		if int(lookup.LookupTableIndex) >= len(table.Addresses) {
-			return nil, errors.New("lookup table index out of range")
-		}
-
-		ammId = &table.Addresses[lookup.LookupTableIndex]
-
-	} else {
-		key := solana.MustPublicKeyFromBase58(tx.AccountKeys[accountIndex])
-		ammId = &key
-	}
-
-	return ammId, nil
-}
-
-func processInitialize2(ins generators.TxInstruction, tx generators.GeyserResponse) {
-	ammId, err := getPublicKeyFromTx(4, tx.MempoolTxns, ins)
-	if err != nil {
-		return
-	}
-
-	if ammId == nil {
-		log.Print("Unable to retrieve AMM ID")
-		return
-	}
-
-	tracker, err := bot.GetAmmTrackingStatus(ammId)
-	if err != nil {
-		log.Print(err)
-		return
-	}
-
-	if tracker.Status == storage.TRACKED_TRIGGER_ONLY || tracker.Status == storage.TRACKED_BOTH {
-		log.Printf("%s | Untracked because of initialize2", ammId)
-		bot.PauseAmmTracking(ammId)
-	}
-}
-
-func processWithdraw(ins generators.TxInstruction, tx generators.GeyserResponse) {
-	ammId, err := getPublicKeyFromTx(1, tx.MempoolTxns, ins)
-	if err != nil {
-		return
-	}
-
-	if ammId == nil {
-		log.Print("Unable to retrieve AMM ID")
-		return
-	}
-
-	pKey, err := liquidity.GetPoolKeys(ammId)
-	if err != nil {
-		log.Printf("%s | %s", ammId, err)
-		return
-	}
-
-	time.Sleep(time.Duration(500) * time.Millisecond)
-
-	reserve, err := liquidity.GetPoolSolBalance(pKey)
-	if err != nil {
-		log.Printf("%s | %s", ammId, err)
-		return
-	}
-
-	if reserve > uint64(config.LAMPORTS_PER_SOL) {
-		log.Printf("%s | Pool still have high balance", ammId)
-		return
-	}
-
-	bot.TrackedAmm(ammId)
-}
-
-/**
-* Process swap base in instruction
- */
-func processSwapBaseIn(ins generators.TxInstruction, tx generators.GeyserResponse) {
-	var ammId *solana.PublicKey
-	var openbookId *solana.PublicKey
-	var sourceTokenAccount *solana.PublicKey
-	var destinationTokenAccount *solana.PublicKey
-	var signerPublicKey *solana.PublicKey
-
-	var err error
-	ammId, err = getPublicKeyFromTx(1, tx.MempoolTxns, ins)
-	if err != nil {
-		return
-	}
-
-	if ammId == nil {
-		return
-	}
-
-	openbookId, err = getPublicKeyFromTx(7, tx.MempoolTxns, ins)
-	if err != nil {
-		return
-	}
-
-	var sourceAccountIndex int
-	var destinationAccountIndex int
-	var signerAccountIndex int
-
-	if openbookId.String() == config.OPENBOOK_ID.String() {
-		sourceAccountIndex = 15
-		destinationAccountIndex = 16
-		signerAccountIndex = 17
-	} else {
-		sourceAccountIndex = 14
-		destinationAccountIndex = 15
-		signerAccountIndex = 16
-	}
-
-	if sourceAccountIndex >= len(ins.Accounts) || destinationAccountIndex >= len(ins.Accounts) || signerAccountIndex >= len(ins.Accounts) {
-		log.Printf("%s | Invalid data length (%d)", ammId, len(ins.Accounts))
-		return
-	}
-
-	sourceTokenAccount, err = getPublicKeyFromTx(sourceAccountIndex, tx.MempoolTxns, ins)
-	destinationTokenAccount, err = getPublicKeyFromTx(destinationAccountIndex, tx.MempoolTxns, ins)
-	signerPublicKey, err = getPublicKeyFromTx(signerAccountIndex, tx.MempoolTxns, ins)
-
-	if sourceTokenAccount == nil || destinationTokenAccount == nil || signerPublicKey == nil {
-		return
-	}
-
-	pKey, err := liquidity.GetPoolKeys(ammId)
-	if err != nil {
-		return
-	}
-
-	mint, _, err := liquidity.GetMint(pKey)
-	if err != nil {
-		return
-	}
-
-	tracker, err := bot.GetAmmTrackingStatus(ammId)
-
-	if tracker.Status != storage.TRACKED_TRIGGER_ONLY {
-		return
-	}
-
-	amount := bot.GetBalanceFromTransaction(tx.MempoolTxns.PreTokenBalances, tx.MempoolTxns.PostTokenBalances, mint)
-	amountSol := bot.GetBalanceFromTransaction(tx.MempoolTxns.PreTokenBalances, tx.MempoolTxns.PostTokenBalances, config.WRAPPED_SOL)
-
-	if amount.Sign() == 1 {
-		if amountSol.Cmp(big.NewInt(0)) == 1 {
-			log.Printf("%s | %s | Potential entry %d SOL (Slot %d) | %s", pKey.ID, tx.MempoolTxns.Source, amountSol, tx.MempoolTxns.Slot, tx.MempoolTxns.Signature)
-
-			bot.SetTrade(&types.Trade{
-				AmmId:     ammId,
-				Mint:      &mint,
-				Action:    "BUY",
-				Amount:    big.NewInt(0).Abs(amount).String(),
-				Signature: tx.MempoolTxns.Signature,
-			})
-		}
-	}
-
-	// Only proceed if the amount is greater than 0.011 SOL and amount of SOL is a negative number (represent buy action)
-	// log.Printf("%s | %d | %s | %s", ammId, amount.Sign(), amountSol, tx.MempoolTxns.Signature)
-	// sniper(amount *big.Int, amountSol *big.Int, pKey *types.RaydiumPoolKeys, tx generators.GeyserResponse)
-
-	// Machine gun technique
-	// Sniper technique
 }

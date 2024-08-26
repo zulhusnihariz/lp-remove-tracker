@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-
-	_ "github.com/go-sql-driver/mysql"
 )
 
 type Database struct {
@@ -14,29 +12,15 @@ type Database struct {
 	MysqlClient *sql.DB
 }
 
-type MySQLFilter struct {
-	Query []MySQLQuery
-}
-
-type MySQLQuery struct {
-	Column string
-	Op     string
-	Query  string
-}
-
-type Column struct {
-	Field string
-	Type  string
-}
-
 func NewDatabase(client *sql.DB, dbName string) (*Database, error) {
 	return &Database{
 		dbName:      dbName,
 		MysqlClient: client,
 	}, nil
+
 }
 
-func (d *Database) CreateDatabaseAndTables() error {
+func (d *Database) CreateDatabaseAndTable() error {
 
 	createDatabase := `CREATE DATABASE IF NOT EXISTS ` + d.dbName
 
@@ -54,7 +38,13 @@ func (d *Database) CreateDatabaseAndTables() error {
 		return fmt.Errorf(fmt.Sprintf("Failed to use db %s: %v", d.dbName, err))
 	}
 
-	path := "./migrations/"
+	wd, err := os.Getwd()
+
+	if err != nil {
+		panic(err)
+	}
+
+	path := wd + "/migrations/"
 
 	entries, err := os.ReadDir(path)
 

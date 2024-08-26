@@ -17,6 +17,8 @@ var (
 	RAYDIUM_AMM_V4              = solana.MustPublicKeyFromBase58("675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8")
 	OPENBOOK_ID                 = solana.MustPublicKeyFromBase58("srmqPvymJeFKQ4zGQed1GFppgkRHL9kaELCbyksJtPX")
 	RAYDIUM_AUTHORITY           = solana.MustPublicKeyFromBase58("5Q544fKrFoe6tsEbD7S8EmxGTJYAKtTVhAW5Q5pge4j1")
+	COMPUTE_PROGRAM             = solana.MustPublicKeyFromBase58("ComputeBudget111111111111111111111111111111")
+	TRANSFER_PROGRAM            = solana.MustPublicKeyFromBase58("11111111111111111111111111111111")
 	BLOXROUTE_MEMO              = solana.MustPublicKeyFromBase58("HQ2UUt18uJqKaQFJhgV9zaTdQxUZjNrsKFgoEDquBkcx")
 	BLOXROUTE_TIP               = solana.MustPublicKeyFromBase58("HWEoBxYs7ssKuudEjzjmpfJVX7Dvi7wescFsVx2L5yoY")
 	LAMPORTS_PER_SOL            = 1000000000

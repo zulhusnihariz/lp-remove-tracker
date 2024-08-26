@@ -25,7 +25,7 @@ func SetTrade(trade *types.Trade) error {
 	tradeStorage := storage.NewTradeStorage(db)
 
 	trade.Timestamp = time.Now().Unix()
-	err = tradeStorage.SetTrade(trade)
+	err = tradeStorage.Set(trade)
 	if err != nil {
 		log.Printf("Failed to set trade: %v", err)
 	}
